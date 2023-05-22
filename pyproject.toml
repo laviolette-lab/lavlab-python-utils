@@ -1,0 +1,23 @@
+[project]
+name = "lavlab-python-utils"
+version = "1.0.0"
+authors = [
+  { name="Michael Barrett", email="mjbarrett@mcw.edu" },
+]
+description = "LaViolette Lab utility package"
+readme = "README.md"
+requires-python = ">=3.7"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+]
+dependencies = [
+  'omero-py >= 5.13.1',
+  'omero-scripts >= 5.7.1',
+  'scikit-image >= 0.19.3',
+  'numpy >= 1.24.2'
+]
+[project.urls]
+"Homepage" = "https://github.com/laviolette-lab/lavlab-python-utils"
+"Bug Tracker" = "https://github.com/laviolette-lab/lavlab-python-utils/issues"
