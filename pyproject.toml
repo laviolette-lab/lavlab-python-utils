@@ -1,6 +1,6 @@
 [project]
 name = "lavlab-python-utils"
-version = "1.0.0"
+version = "1.0.1"
 authors = [
   { name="Michael Barrett", email="mjbarrett@mcw.edu" },
 ]
@@ -15,8 +15,7 @@ classifiers = [
 dependencies = [
   'omero-py >= 5.13.1',
   'omero-scripts >= 5.7.1',
-  'scikit-image >= 0.19.3',
-  'numpy >= 1.24.2'
+  'scikit-image >= 0.19.3'
 ]
 [project.urls]
 "Homepage" = "https://github.com/laviolette-lab/lavlab-python-utils"
