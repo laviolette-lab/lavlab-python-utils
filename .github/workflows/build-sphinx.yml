@@ -13,12 +13,12 @@ jobs:
           python3.8 -m pip install sphinx lavlab-python-utils
       - name: Sphinx build
         run: |
-          make html
+          cd docs && make html
       - name: Deploy
         uses: peaceiris/actions-gh-pages@v3
         if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
         with:
           publish_branch: gh-pages
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: _build/
+          publish_dir: docs/build/html
           force_orphan: true
