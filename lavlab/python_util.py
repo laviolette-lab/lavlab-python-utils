@@ -43,7 +43,7 @@ Contains mappings to filetype extensions and mimetypes.
 SKIMAGE_FORMATS: JPEG, TIFF, PNG : Save formats supported by SciKit-Image
 MATLAB_FORMATS: M, MAT : Proprietary Matlab filetypes, contains MATLAB_MIME a proprietary matlab mimetype
 """
-def interlaceLists(lists: list[list]) -> list:
+def interlaceLists(lists: list) -> list:
     """
 Interlaces a list of lists. Useful for combining tileLists of different channels.
 Example: _interlaceLists([[1,3],[2,4]]) == [1,2,3,4] 
