@@ -350,12 +350,6 @@ str
 
     return recon, reconPath
 
-def applyMask(img_bin: np.ndarray, mask_bin: np.ndarray, where=None):
-    """Essentially an alias for np.where()"""
-    if where is None:
-        where=mask_bin!=0
-    return np.where(where, mask_bin, img_bin)
-
 #
 ## TILES
 #
@@ -584,7 +578,7 @@ returns: list[shape.id, (r,g,b), (row_points, column_points))]
     return sorted(shapes)
 
 
-def create_polygon(contour:tuple[np.ndarray, np.ndarray], x_offset=0, y_offset=0, z=None, t=None, comment=None, rgb=(0,0,0)) -> PolygonI:
+def createPolygon(contour:tuple[np.ndarray, np.ndarray], x_offset=0, y_offset=0, z=None, t=None, comment=None, rgb=(0,0,0)) -> PolygonI:
     """ 
 Creates a local omero polygon obj from a list of points, and parameters.
     
@@ -632,7 +626,7 @@ omero_model_PolygonI.PolygonI
     polygon.points = rstring(points)
     return polygon
 
-def create_roi(img: ImageWrapper, shapes: list[ShapeWrapper]):
+def createRoi(img: ImageWrapper, shapes: list[ShapeWrapper]):
     """
 Creates an omero RoiI object for an image from an array of shapes.
 
