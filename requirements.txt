@@ -1,0 +1,3 @@
+omero-py >= 5.13.1
+omero-scripts >= 5.7.1
+scikit-image >= 0.19.3
