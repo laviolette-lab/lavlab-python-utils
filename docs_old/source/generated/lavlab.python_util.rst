@@ -24,6 +24,7 @@
       interlaceLists
       lookup_filetype_by_name
       merge_async_iters
+      rgba_to_int
       save_image_binary
    
    

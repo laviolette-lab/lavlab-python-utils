@@ -3,7 +3,14 @@ Contains general utilities for lavlab's python scripts.
 """
 import os
 import asyncio
-from skimage import io    
+
+import numpy as np
+from PIL import Image
+from skimage import io, draw
+
+#
+## Utility Dictionary 
+#
 FILETYPE_DICTIONARY={ 
     "SKIMAGE_FORMATS": {
         "JPEG": {
@@ -43,6 +50,23 @@ Contains mappings to filetype extensions and mimetypes.
 SKIMAGE_FORMATS: JPEG, TIFF, PNG : Save formats supported by SciKit-Image
 MATLAB_FORMATS: M, MAT : Proprietary Matlab filetypes, contains MATLAB_MIME a proprietary matlab mimetype
 """
+#
+## Utility Dictionary Utilities
+#
+def lookup_filetype_by_name(file):
+    """Searches dictionary for a matching file type using the filename's extension"""
+    filename, f_ext = os.path.splitext(file)
+    for set in FILETYPE_DICTIONARY:
+        for format in FILETYPE_DICTIONARY[set]:
+            for ext in FILETYPE_DICTIONARY[set][format]["EXT"]:
+                if ext == f_ext:
+                    return format
+#
+## Python Utilities
+#
+def chunkify(lst,n):
+    return [lst[i:i+n] for i in range(0, len(lst), n)]
+
 def interlaceLists(lists: list) -> list:
     """
 Interlaces a list of lists. Useful for combining tileLists of different channels.
@@ -59,9 +83,9 @@ Example: _interlaceLists([[1,3],[2,4]]) == [1,2,3,4]
         arr[i::len(lists)] = list
     return arr
 
-def chunkify(lst,n):
-    return [lst[i:i+n] for i in range(0, len(lst), n)]
-
+#
+## Async Python Utilities
+#
 def merge_async_iters(*aiters):
     """
 Merges async generators using a asyncio.Queue. From: https://stackoverflow.com/a/55317623\n
@@ -108,16 +132,16 @@ returns: AsyncGenerator[x]
 async def desync(it):
   """Turns sync iterable into an async iterable."""
   for x in it: yield x  
-
-def lookup_filetype_by_name(file):
-    """Searches dictionary for a matching file type using the filename's extension"""
-    filename, f_ext = os.path.splitext(file)
-    for set in FILETYPE_DICTIONARY:
-        for format in FILETYPE_DICTIONARY[set]:
-            for ext in FILETYPE_DICTIONARY[set][format]["EXT"]:
-                if ext == f_ext:
-                    return format
+  
         
+#
+## Image Array Utilities
+#
+def rgba_to_int(red, green, blue, alpha=255):
+    """ Return the color as an Integer in RGBA encoding """
+    return int.from_bytes([red, green, blue, alpha],
+                      byteorder='big', signed=True)
+
 def save_image_binary(path, bin, jpeg=None) -> str:
     """
 Saves image binary to path using SciKit-Image. Forces Lossless JPEG compression.\n
@@ -139,3 +163,59 @@ returns: path of saved image
     else:
         io.imsave(path, bin)
     return path
+
+def resize_image_array(input_array: np.ndarray, shape_yx: tuple[int,int], interpolation=Image.NEAREST) -> np.ndarray:
+    """
+Resizes input array to the given yx dimensions.
+
+Notes
+-----
+no skimage or scipy versions as of scipy 1.3.0 :\n
+https://docs.scipy.org/doc/scipy-1.2.1/reference/generated/scipy.misc.imresize.html
+
+
+Parameters
+----------
+input_array: 2-3 dimensional np.ndarray
+    Image array to resize. May support more than 3 channels but it is untested.
+shape_yx: Desired height and width of output.
+interpolation: PIL.Image.INTERPOLATION_TYPE, default: PIL.Image.NEAREST
+    Which PIL interpolation type to use.
+
+Returns
+-------
+np.ndarray
+    Downsampled version of input_array.
+    """
+    return np.asarray(Image.fromarray(
+        input_array).resize(shape_yx, interpolation), input_array.dtype)
+
+def drawShapes(input_img: np.ndarray, shape_points:tuple[int,tuple[int,int,int],tuple[np.ndarray, np.ndarray]]) -> None:
+    """
+Draws a list of shape points onto the input numpy array.
+
+Warns
+-------
+NO SAFETY CHECKS! MAKE SURE input_img AND shape_points ARE FOR THE SAME DOWNSAMPLE FACTOR!
+
+Parameters
+----------
+input_img: np.ndarray
+    3 channel numpy array
+shape_points: tuple(int, tuple(int,int,int), tuple(row, col))
+    Expected to use output from lavlab.omero_util.getShapesAsPoints
+
+Returns
+-------
+``None``
+    """
+    for id, rgb, points in shape_points:
+        rr,cc = draw.polygon(*points)
+        input_img[rr,cc]=rgb
+
+
+def applyMask(img_bin: np.ndarray, mask_bin: np.ndarray, where=None):
+    """Essentially an alias for np.where()"""
+    if where is None:
+        where=mask_bin!=0
+    return np.where(where, mask_bin, img_bin)

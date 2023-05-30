@@ -24,12 +24,15 @@
       createFullTileList
       createTileList2D
       createTileListFromImage
+      create_polygon
+      create_roi
       downloadFileAnnotation
       drawShapes
       getClosestResolutionLevel
       getDownsampleFromDimensions
       getDownsampledYXDimensions
       getImageAtResolution
+      getLargeRecon
       getScriptByName
       getShapesAsPoints
       getTiles

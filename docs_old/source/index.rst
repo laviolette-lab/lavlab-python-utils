@@ -16,6 +16,5 @@ Contents
 
 .. toctree::
 
-   installation
-   getting_started
-   modules
+   usage
+   api
