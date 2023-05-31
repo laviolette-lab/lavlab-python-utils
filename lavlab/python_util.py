@@ -46,31 +46,114 @@ FILETYPE_DICTIONARY={
     }
 }
 """
-Contains mappings to filetype extensions and mimetypes.
-SKIMAGE_FORMATS: JPEG, TIFF, PNG : Save formats supported by SciKit-Image
-MATLAB_FORMATS: M, MAT : Proprietary Matlab filetypes, contains MATLAB_MIME a proprietary matlab mimetype
+Contains file extensions and mimetypes for commonly used files.
+
+MATLAB_FORMATS has special key: MATLAB_MIME. MATLAB_MIME is a proprietary mimetype for MATLAB files. 
+Clients will need to know how to handle MATLAB_MIME. Unless you know you need the MATLAB_MIME, use the normal mimetype.
+
+```
+FILETYPE_DICTIONARY={ 
+    "SKIMAGE_FORMATS": {
+        "JPEG": {
+            "EXT": ".jpg",
+            "MIME": "image/jpg"
+        },
+        "TIFF": {
+            "EXT": ".tif",
+            "MIME": "image/tiff"
+        },
+        "PNG": {
+            "EXT": ".png",
+            "MIME": "image/png"
+        }
+    },
+    "MATLAB_FORMATS": {
+        "M":{
+            "EXT": ".m",
+            "MIME": "text/plain",
+            "MATLAB_MIME": "application/matlab-m"
+        },
+        "MAT":{
+            "EXT": ".mat",
+            "MIME": "application/octet-stream",
+            "MATLAB_MIME": "application/matlab-mat"
+        }
+    },
+    "GENERIC_FORMATS": {
+        "TXT":{
+            "EXT": ".txt",
+            "MIME": "text/plain"
+        }
+    }
+}
+```
+
+See Also
+--------
+lavlab.omero_utils.OMERO_DICTIONARY : Dictionary for converting omero info into python equivalents.
 """
 #
 ## Utility Dictionary Utilities
 #
-def lookup_filetype_by_name(file):
-    """Searches dictionary for a matching file type using the filename's extension"""
+def lookup_filetype_by_name(file:str) -> tuple[str,str]:
+    """
+Searches dictionary for a matching filetype using the filename's extension.
+
+Parameters
+----------
+file: str
+    Filename to lookup type of.
+
+Returns
+-------
+tuple[str, str]
+    Returns filetype set (SKIMAGE, MATLAB, etc) and the filetype key (JPEG, MAT, etc)
+"""
     filename, f_ext = os.path.splitext(file)
     for set in FILETYPE_DICTIONARY:
         for format in FILETYPE_DICTIONARY[set]:
             for ext in FILETYPE_DICTIONARY[set][format]["EXT"]:
                 if ext == f_ext:
-                    return format
+                    return set, format
 #
 ## Python Utilities
 #
-def chunkify(lst,n):
+def chunkify(lst:list,n:int):
+    """
+Breaks list into n chunks.
+
+Parameters
+----------
+lst: list
+    List to chunkify.
+n: int
+    Number of lists to make
+
+Returns
+-------
+list[list*n]
+    lst split into n chunks.
+    """
     return [lst[i:i+n] for i in range(0, len(lst), n)]
 
-def interlaceLists(lists: list) -> list:
+def interlace_lists(*lists: list[list]) -> list:
     """
 Interlaces a list of lists. Useful for combining tileLists of different channels.
-Example: _interlaceLists([[1,3],[2,4]]) == [1,2,3,4] 
+
+Parameters
+----------
+*lists: list
+    lists to merge.
+
+Returns
+-------
+list
+    Merged list.
+
+Examples
+--------
+>>> interlace_lists([1,3],[2,4])
+[1,2,3,4]
     """
     # get length of new arr
     length=0
@@ -88,9 +171,21 @@ Example: _interlaceLists([[1,3],[2,4]]) == [1,2,3,4]
 #
 def merge_async_iters(*aiters):
     """
-Merges async generators using a asyncio.Queue. From: https://stackoverflow.com/a/55317623\n
-aiters...: AsyncGenerator[x]...\n
-returns: AsyncGenerator[x]
+Merges async generators using a asyncio.Queue. 
+
+Notes
+-----
+Code from: https://stackoverflow.com/a/55317623
+
+Parameters
+----------
+*aiters: AsyncGenerator
+    AsyncGenerators to merge
+
+Returns
+-------
+AsyncGenerator
+    Generator that calls all input generators
     """
     queue = asyncio.Queue(1)
     run_count = len(aiters)
@@ -130,25 +225,69 @@ returns: AsyncGenerator[x]
     return merged()
 
 async def desync(it):
-  """Turns sync iterable into an async iterable."""
+  """
+Turns sync iterable into an async iterable.
+
+Parameters
+----------
+it: Iterable
+    Synchronous iterable-like object (can be used in for loop)
+
+Returns
+-------
+AsyncGenerator
+    asynchronously yields results from input iterable.
+"""
   for x in it: yield x  
   
         
 #
 ## Image Array Utilities
 #
-def rgba_to_int(red, green, blue, alpha=255):
-    """ Return the color as an Integer in RGBA encoding """
+def rgba_to_int(red: int, green: int, blue: int, alpha=255) -> int:
+    """
+Return the color as an Integer in RGBA encoding.
+
+Parameters
+----------
+red: int
+    Red color val (0-255)
+green: int
+    Green color val (0-255)
+blue: int
+    Blue color val (0-255)
+alpha: int
+    Alpha opacity val (0-255)
+    
+Returns
+-------
+int
+    Integer encoding rgba value.
+"""
     return int.from_bytes([red, green, blue, alpha],
                       byteorder='big', signed=True)
 
 def save_image_binary(path, bin, jpeg=None) -> str:
     """
-Saves image binary to path using SciKit-Image. Forces Lossless JPEG compression.\n
-path: path to save image at\n
-bin: image as numpy array\n
-jpeg: whether or not to add quality=100 to skimage.io.imsave args\n
-returns: path of saved image
+Saves image binary to path using SciKit-Image. 
+
+Notes
+-----
+Attempts to force Lossless JPEG compression.
+
+Parameters
+----------
+path: str
+    Path to save image at.
+bin: np.ndarray
+    Image as numpy array.
+jpeg: bool, optional
+    Whether or not to add quality=100 to skimage.io.imsave args. Will check for jpeg image.
+
+Returns
+-------
+str
+    Path of saved image.
     """
     # if not clarified, assume jpeg by filename
     if jpeg is None:
@@ -190,7 +329,7 @@ np.ndarray
     return np.asarray(Image.fromarray(
         input_array).resize(shape_yx, interpolation), input_array.dtype)
 
-def drawShapes(input_img: np.ndarray, shape_points:tuple[int,tuple[int,int,int],tuple[np.ndarray, np.ndarray]]) -> None:
+def draw_shapes(input_img: np.ndarray, shape_points:tuple[int,tuple[int,int,int],tuple[np.ndarray, np.ndarray]]) -> None:
     """
 Draws a list of shape points onto the input numpy array.
 
@@ -214,8 +353,24 @@ Returns
         input_img[rr,cc]=rgb
 
 
-def applyMask(img_bin: np.ndarray, mask_bin: np.ndarray, where=None):
-    """Essentially an alias for np.where()"""
+def apply_mask(img_bin: np.ndarray, mask_bin: np.ndarray, where=None):
+    """
+Essentially an alias for np.where()
+
+Parameters
+----------
+img_bin: np.ndarray
+    Image as numpy array.
+mask_bin: np.ndarray
+    Mask as numpy array.
+where: conditional, optional
+    Passthrough for np.where conditional.
+
+Returns
+-------
+tuple[np.ndarray, np.ndarray]
+    Where and where not arrays
+"""
     if where is None:
         where=mask_bin!=0
     return np.where(where, mask_bin, img_bin)

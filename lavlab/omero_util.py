@@ -22,7 +22,7 @@ from omero_model_RectangleI import RectangleI
 from omero_model_FileAnnotationI import FileAnnotationI
 
 from lavlab import omero_asyncio
-from lavlab.python_util import chunkify, merge_async_iters, interlaceLists, lookup_filetype_by_name, FILETYPE_DICTIONARY, save_image_binary, rgba_to_int, resize_image_array
+from lavlab.python_util import chunkify, merge_async_iters, interlace_lists, lookup_filetype_by_name, FILETYPE_DICTIONARY, save_image_binary, rgba_to_int, resize_image_array
 
 PARALLEL_STORE_COUNT=4
 """Number of pixel stores to be created for an image."""
@@ -455,7 +455,7 @@ Setting weave True will mix the channels together. Used  for writing RGB images
                     tileChannels = []
                     for channel in origC:
                         tileChannels.append(createTileList2D(z,channel,t,width, height, tile_size)) 
-                    tileList.extend(interlaceLists(tileChannels))
+                    tileList.extend(interlace_lists(tileChannels))
                 else:
                     tileList.extend(createTileList2D(z,c,t,width, height, tile_size))
         
