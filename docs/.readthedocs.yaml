@@ -10,8 +10,7 @@ build:
   os: ubuntu-22.04
   tools:
    python: "3.10"
-   sphinx: ">=6.2.1"
-   docutils: ">=0.18.1"
+   
 
     # You can also specify other tool versions:
     # nodejs: "19"
@@ -27,6 +26,8 @@ sphinx:
 #    - pdf
 
 # Optionally declare the Python requirements required to build your docs
-# python:
-#    install:
+python:
+   install:
+     - "sphinx>=6.2.1"
+     - "docutils>=0.18.1"
 #    - requirements: docs/requirements.txt
