@@ -1,5 +1,0 @@
-omero-py >= 5.13.1
-omero-scripts >= 5.7.1
-scikit-image >= 0.19.3
-sphinx >= 6.2.1
-docutils >= 0.18.1
