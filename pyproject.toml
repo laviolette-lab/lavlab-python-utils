@@ -1,7 +1,11 @@
 [project]
 name = "lavlab-python-utils"
 description = "LaViolette Lab utility package"
+<<<<<<< HEAD
 version = "1.0.3"
+=======
+version = "1.0.1"
+>>>>>>> parent of 6cae003 (Bump version: 1.0.1 → 1.0.2)
 
 authors = [
   { name="Michael Barrett", email="mjbarrett@mcw.edu" },
