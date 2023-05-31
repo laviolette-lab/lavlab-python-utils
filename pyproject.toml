@@ -22,8 +22,8 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-sphinx = {version = ">=6.2.1", for-extra = "docs"}
-docutils = {version = ">=0.18.1", for-extra = "docs"}
+sphinx = [{version = ">=6.2.1", for-extra = "docs"}]
+docutils = [{version = ">=0.18.1", for-extra = "docs"}]
 
 [project.urls]
 "Homepage" = "https://github.com/laviolette-lab/lavlab-python-utils"
