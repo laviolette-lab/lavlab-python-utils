@@ -27,7 +27,9 @@ sphinx:
 
 # Optionally declare the Python requirements required to build your docs
 python:
-   install:
-     - "sphinx>=6.2.1"
-     - "docutils>=0.18.1"
+  install:
+    - method: pip
+      path: .
+      extra_requirements:
+        - docs
 #    - requirements: docs/requirements.txt
