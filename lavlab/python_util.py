@@ -6,7 +6,7 @@ import asyncio
 
 import numpy as np
 from PIL import Image
-from skimage import io, draw
+from skimage import io, draw, measure
 
 #
 ## Utility Dictionary 
@@ -374,3 +374,32 @@ tuple[np.ndarray, np.ndarray]
     if where is None:
         where=mask_bin!=0
     return np.where(where, mask_bin, img_bin)
+
+def get_color_region_contours(img: np.ndarray or Image, rgb_val: tuple[int,int,int], axis = -1) -> np.ndarray:
+    """
+Finds the contours of all areas with a given rgb value. Useful for finding drawn ROIs.
+
+Parameters
+----------
+img: np.ndarray or PIL.Image
+    Image with ROIs. Converts PIL Image to np array for processing.
+rgb_val: tuple[int,int,int]
+    Red, Green, and Blue values for the roi color.
+axis: int, Default: -1
+    Which axis is the color channel. Default is the last axis [:,:,color]
+
+Returns
+-------
+list[ tuple[int(None), rgb_val, contours] ]
+    Returns list of lavlab shapes.
+    """
+    if type(img) is Image:
+        img = np.asarray(img)
+    assert type(img.dtype) is np.uint8
+    mask_bin = np.all(img == rgb_val, axis = axis)
+    contours = measure.find_contours(mask_bin)
+    del mask_bin
+    # wrap in lavlab shape convention
+    for i, contour in enumerate(contours):
+        contours[i] = (None, rgb_val, contour)
+    return contours
