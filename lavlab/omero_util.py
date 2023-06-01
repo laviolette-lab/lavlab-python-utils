@@ -578,7 +578,7 @@ returns: list[shape.id, (r,g,b), (row_points, column_points))]
     return sorted(shapes)
 
 
-def createPolygon(contour:tuple[np.ndarray, np.ndarray], x_offset=0, y_offset=0, z=None, t=None, comment=None, rgb=(0,0,0)) -> PolygonI:
+def createPolygon(contour:tuple[np.ndarray, np.ndarray], stride=1, x_offset=0, y_offset=0, z=None, t=None, comment=None, rgb=(0,0,0)) -> PolygonI:
     """ 
 Creates a local omero polygon obj from a list of points, and parameters.
     
@@ -586,6 +586,8 @@ Parameters
 ----------
 contour: tuple[rows, cols]
     Expects contour as outputed by skimage.measure.find_contours
+stride: int, Default:1
+    Downsample polygon point quantity.
 x_offset: int, Default: 0
     Inherited from where I ripped this code. Lets you shift coords I guess.
 y_offset: int, Default: 0
@@ -604,7 +606,6 @@ Returns
 omero_model_PolygonI.PolygonI
     Local Omero Polygon object, likely needs to linked to an ROI
     """
-    stride = 64
     coords = []
     # points in contour are adjacent pixels, which is too verbose
     # take every nth point
