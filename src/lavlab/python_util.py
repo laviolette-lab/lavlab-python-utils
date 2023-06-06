@@ -5,8 +5,8 @@ import os
 import asyncio
 
 import numpy as np
-from PIL import Image
-from skimage import io, draw, measure
+from PIL import Image, ImageDraw
+from skimage import measure
 
 #
 ## Utility Dictionary 
@@ -112,9 +112,10 @@ tuple[str, str]
     filename, f_ext = os.path.splitext(file)
     for set in FILETYPE_DICTIONARY:
         for format in FILETYPE_DICTIONARY[set]:
-            for ext in FILETYPE_DICTIONARY[set][format]["EXT"]:
-                if ext == f_ext:
-                    return set, format
+            ext = FILETYPE_DICTIONARY[set][format]["EXT"]
+            print(ext)
+            if ext == f_ext:
+                return set, format
 #
 ## Python Utilities
 #
@@ -244,7 +245,7 @@ AsyncGenerator
 #
 ## Image Array Utilities
 #
-def rgba_to_int(red: int, green: int, blue: int, alpha=255) -> int:
+def rgba_to_uint(red: int, green: int, blue: int, alpha=255) -> int:
     """
 Return the color as an Integer in RGBA encoding.
 
@@ -264,72 +265,46 @@ Returns
 int
     Integer encoding rgba value.
 """
-    return int.from_bytes([red, green, blue, alpha],
-                      byteorder='big', signed=True)
+    r = red << 24
+    g = green << 16
+    b = blue << 8
+    a = alpha
+    rgba_int = r+g+b+a
+    if (rgba_int > (2**31-1)):       # convert to signed 32-bit int
+        rgba_int = rgba_int - 2**32
+    return int(rgba_int)
 
-def save_image_binary(path, bin, jpeg=None) -> str:
+def uint_to_rgba(uint: int) -> int:
     """
-Saves image binary to path using SciKit-Image. 
-
-Notes
------
-Attempts to force Lossless JPEG compression.
+Return the color as an Integer in RGBA encoding.
 
 Parameters
 ----------
-path: str
-    Path to save image at.
-bin: np.ndarray
-    Image as numpy array.
-jpeg: bool, optional
-    Whether or not to add quality=100 to skimage.io.imsave args. Will check for jpeg image.
-
+int
+    Integer encoding rgba value.
+    
 Returns
 -------
-str
-    Path of saved image.
-    """
-    # if not clarified, assume jpeg by filename
-    if jpeg is None:
-        if lookup_filetype_by_name(path) == "JPEG":
-            jpeg=True
-        else:
-            jpeg=False
+red: int
+    Red color val (0-255)
+green: int
+    Green color val (0-255)
+blue: int
+    Blue color val (0-255)
+alpha: int
+    Alpha opacity val (0-255)
+"""
+    if rgba_int < 0:    # convert from signed 32-bit int
+        rgba_int = rgba_int + 2**32
 
-    # if jpeg make scikit image use lossless jpeg
-    if jpeg is True: 
-        io.imsave(path, bin, quality=100)
-    else:
-        io.imsave(path, bin)
-    return path
+    red   = (rgba_int >> 24) & 0xFF
+    green = (rgba_int >> 16) & 0xFF
+    blue  = (rgba_int >> 8)  & 0xFF
+    alpha = rgba_int & 0xFF
 
-def resize_image_array(input_array: np.ndarray, shape_yx: tuple[int,int], interpolation=Image.NEAREST) -> np.ndarray:
-    """
-Resizes input array to the given yx dimensions.
+    return red, green, blue, alpha
 
-Notes
------
-no skimage or scipy versions as of scipy 1.3.0 :\n
-https://docs.scipy.org/doc/scipy-1.2.1/reference/generated/scipy.misc.imresize.html
-
-
-Parameters
-----------
-input_array: 2-3 dimensional np.ndarray
-    Image array to resize. May support more than 3 channels but it is untested.
-shape_yx: Desired height and width of output.
-interpolation: PIL.Image.INTERPOLATION_TYPE, default: PIL.Image.NEAREST
-    Which PIL interpolation type to use.
-
-Returns
--------
-np.ndarray
-    Downsampled version of input_array.
-    """
-    return np.asarray(Image.fromarray(
-        input_array).resize(shape_yx, interpolation), input_array.dtype)
-
-def draw_shapes(input_img: np.ndarray, shape_points:tuple[int,tuple[int,int,int],tuple[np.ndarray, np.ndarray]]) -> None:
+def draw_shapes(input_img: Image.Image or np.ndarray, shape_points:tuple[int,tuple[int,int,int],tuple[np.ndarray, np.ndarray]]) -> None:
     """
 Draws a list of shape points onto the input numpy array.
 
@@ -348,18 +323,35 @@ Returns
 -------
 ``None``
     """
-    for id, rgb, points in shape_points:
-        rr,cc = draw.polygon(*points)
-        input_img[rr,cc]=rgb
+    # need PIL image for processing
+    arr = None
+    if type(input_img) is np.ndarray:
+        arr = input_img
+        input_img = Image.fromarray(arr)
+
+    # use pil imagedraw
+    draw = ImageDraw.Draw(input_img)
+    for id, rgb, xy in shape_points:
+        draw.polygon(xy, fill=rgb)
+
+    # but need to save changes to numpy if that's the input
+    if arr is not None:
+        new_arr = np.array(input_img)
+        np.copyto(arr, new_arr, where=not None)
+        
 
 
-def apply_mask(img_bin: np.ndarray, mask_bin: np.ndarray, where=None):
+def apply_mask(img_bin: np.ndarray or Image, mask_bin: np.ndarray, where=None):
     """
 Essentially an alias for np.where()
 
+Notes
+-----
+DEPRECATED
+
 Parameters
 ----------
-img_bin: np.ndarray
+img_bin: np.ndarray or PIL.Image
     Image as numpy array.
 mask_bin: np.ndarray
     Mask as numpy array.
@@ -393,9 +385,8 @@ Returns
 list[ tuple[int(None), rgb_val, contours] ]
     Returns list of lavlab shapes.
     """
-    if type(img) is Image:
+    if type(img) is Image.Image:
         img = np.asarray(img)
-    assert type(img.dtype) is np.uint8
     mask_bin = np.all(img == rgb_val, axis = axis)
     contours = measure.find_contours(mask_bin)
     del mask_bin

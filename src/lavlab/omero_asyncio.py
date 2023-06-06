@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-"""This module can be tricky to work with and requires decent python experience. Primarily a dependency for omero_util"""
+"""Primarily a dependency for omero_util. Lab users can safely ignore."""
 # written by manics https://github.com/microscopepony/omero-asyncio/commits?author=manics
 import asyncio
 from functools import partial, update_wrapper
