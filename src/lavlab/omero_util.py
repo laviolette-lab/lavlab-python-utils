@@ -155,7 +155,7 @@ asyncio.run(work(img, tiles, res_lvl, dims))
         jobs.append(work(img.getPrimaryPixels().getId(), chunk, resLvl))
     return merge_async_iters(*jobs)
 
-def getDownsampledXYDimensions(img: ImageWrapper, downsample_factor: int) -> tuple[float,float]:
+def getDownsampledXYDimensions(img: ImageWrapper, downsample_factor: int) -> tuple[int,int]:
     """
 Returns XY (rows,columns) dimensions of given image at the downsample.
 
@@ -173,7 +173,7 @@ float
 float
     img.getSizeY() / downsample_factor
 """
-    return (float(img.getSizeX() / downsample_factor), float(img.getSizeY() / downsample_factor))
+    return (int(img.getSizeX() / downsample_factor), int(img.getSizeY() / downsample_factor))
 
 def getDownsampleFromDimensions(base_shape:tuple[int,...], sample_shape:tuple[int,...]) -> tuple[float,...]:
     """
