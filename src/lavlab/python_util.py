@@ -269,10 +269,10 @@ int
     g = green << 16
     b = blue << 8
     a = alpha
-    rgba_int = r+g+b+a
-    if (rgba_int > (2**31-1)):       # convert to signed 32-bit int
-        rgba_int = rgba_int - 2**32
-    return int(rgba_int)
+    uint = r+g+b+a
+    if (uint > (2**31-1)):       # convert to signed 32-bit int
+        uint = uint - 2**32
+    return int(uint)
 
 def uint_to_rgba(uint: int) -> int:
     """
@@ -294,13 +294,13 @@ blue: int
 alpha: int
     Alpha opacity val (0-255)
 """
-    if rgba_int < 0:    # convert from signed 32-bit int
-        rgba_int = rgba_int + 2**32
+    if uint < 0:    # convert from signed 32-bit int
+        uint = uint + 2**32
 
-    red   = (rgba_int >> 24) & 0xFF
-    green = (rgba_int >> 16) & 0xFF
-    blue  = (rgba_int >> 8)  & 0xFF
-    alpha = rgba_int & 0xFF
+    red   = (uint >> 24) & 0xFF
+    green = (uint >> 16) & 0xFF
+    blue  = (uint >> 8)  & 0xFF
+    alpha = uint & 0xFF
 
     return red, green, blue, alpha
 

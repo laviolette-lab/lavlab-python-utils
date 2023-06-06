@@ -20,7 +20,7 @@ For a list of ids, download the large recon, then load image from path.
 
 .. code-block:: python
 
-   from skimage.io import imread
+   import numpy as np
    from tempfile import TemporaryDirectory
    from lavlab.omero_util import getLargeRecon
 
@@ -28,8 +28,9 @@ For a list of ids, download the large recon, then load image from path.
    for img_id in img_ids:
       with TemporaryDirectory() as workdir
          img_obj = conn.getObject('Image', img_id)
-         lr_path = getLargeRecon(img_obj, SCRIPT_DOWNSAMPLE_FACTOR, workdir)
-         img_arr = imread(lr_path)
+         lr_obj, lr_img = getLargeRecon(img_obj, SCRIPT_DOWNSAMPLE_FACTOR, workdir)
+         local_lr_path = lr_img.filename
+         lr_bin = np.array(lr_img)
          # do work
 
 
@@ -39,13 +40,15 @@ Does the same as above, but instead uses the omero api to request tiles and does
 
 .. code-block:: python
 
+   import numpy as np
    from lavlab.omero_util import getDownsampledYXDimensions, getImageAtResolution
 
    SCRIPT_DOWNSAMPLE_FACTOR=10
    for img_id in img_ids:
       img_obj = conn.getObject('Image', img_id)
       lr_dims = getDownsampledYXDimensions(img_obj, SCRIPT_DOWNSAMPLE_FACTOR)
-      img_arr = getImageAtResolution(img_obj, lr_dims)
+      lr_img = getImageAtResolution(img_obj, lr_dims)
+      lr_bin = np.array(lr_img)
       # do work
 
 * **Tile-based processing approach**

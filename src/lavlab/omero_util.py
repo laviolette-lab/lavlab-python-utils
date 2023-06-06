@@ -268,7 +268,7 @@ Parameters
 img: omero.gateway.ImageWrapper
     Omero Image object from conn.getObjects().
 xy_dim: tuple(x,y)
-    Tuple of desired dimensions (row, col)
+    Tuple of desired dimensions (x,y)
 channels: tuple(int,...), default: all channels
     Array of channels to gather.
     To grab only blue channel: channels=(2) 
@@ -311,7 +311,7 @@ Parameters
 img: omero.gateway.ImageWrapper
     Omero Image object from conn.getObjects().
 xy_dim: tuple(x,y)
-    Tuple of desired dimensions (row, col)
+    Tuple of desired dimensions (x,y)
 
 Returns
 -------
