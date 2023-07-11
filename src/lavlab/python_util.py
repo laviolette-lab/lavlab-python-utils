@@ -1,3 +1,4 @@
+from __future__ import annotations
 """
 Contains general utilities for lavlab's python scripts.
 """

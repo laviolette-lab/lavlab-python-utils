@@ -1,3 +1,4 @@
+from __future__ import annotations
 """
 Helper functions that handle high-level operations and translating asynchronous requests for easy development.
 """
@@ -520,8 +521,8 @@ Returns
 list
     List of (z,c,t,(x,y,w,h)) tiles for use in getTiles.
     """
-    width = range(img.getSizeX())
-    height = range(img.getSizeY())
+    width = img.getSizeX()
+    height = img.getSizeY()
     z_indexes = range(img.getSizeZ())
     timepoints = range(img.getSizeT())
     channels = range(img.getSizeC())
