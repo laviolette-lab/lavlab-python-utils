@@ -42,9 +42,9 @@ OMERO_DICTIONARY = {
     },
     "BYTE_MASKS": {
         np.uint8: {
-            "RED": 0xFF000000, 
-            "GREEN": 0xFF0000, 
-            "BLUE": 0xFF00,  
+            "RED": 0xFF000000,
+            "GREEN": 0xFF0000,
+            "BLUE": 0xFF00,
             "ALPHA": 0xFF
         }
     },
@@ -67,9 +67,9 @@ OMERO_DICTIONARY = {
 },
 "BYTE_MASKS": {
     np.uint8: {
-        "RED": 0xFF000000, 
-        "GREEN": 0xFF0000, 
-        "BLUE": 0xFF00,  
+        "RED": 0xFF000000,
+        "GREEN": 0xFF0000,
+        "BLUE": 0xFF00,
         "ALPHA": 0xFF
     }
 },
@@ -89,7 +89,7 @@ lavlab.python_utils.FILETYPE_DICTIONARY : Contains file extensions and mimetypes
 def getTiles(img: ImageWrapper, tiles: list[tuple[int,int,int,tuple[int,int,int,int]]],
             resLvl: int=None, rps_bypass=True) -> AsyncGenerator[tuple[np.ndarray,tuple[int,int,int,tuple[int,int,int,int]]]]:
     """
-Asynchronous tile generator. 
+Asynchronous tile generator.
 
 Creates and destroys parallel asynchronous RawPixelsStores to await multiple tiles at once.
 
@@ -118,8 +118,8 @@ async def work(img, tiles, res_lvl, dims):
     async for tile, (z,c,t,coord) in getTiles(img,tiles,res_lvl):
         bin [
             coord[1]:coord[1]+coord[3],
-            coord[0]:coord[0]+coord[2], 
-            c ] = tile 
+            coord[0]:coord[0]+coord[2],
+            c ] = tile
     return bin
 asyncio.run(work(img, tiles, res_lvl, dims))
 ```
@@ -168,12 +168,12 @@ downsample_factor: int
 
 Returns
 -------
-float 
+float
     img.getSizeX() / downsample_factor
 float
     img.getSizeY() / downsample_factor
 """
-    return (int(img.getSizeX() / downsample_factor), int(img.getSizeY() / downsample_factor))
+    return (int(img.getSizeX() / int(downsample_factor)), int(img.getSizeY() / int(downsample_factor)))
 
 def getDownsampleFromDimensions(base_shape:tuple[int,...], sample_shape:tuple[int,...]) -> tuple[float,...]:
     """
@@ -198,7 +198,7 @@ Returns
 tuple(int)*x
     Returns a tuple containing the downsample factor of each axis for the sample array.
 
-""" 
+"""
     assert len(base_shape) == len(sample_shape)
     return np.divide(base_shape, sample_shape)
 
@@ -212,12 +212,12 @@ Parameters
 img: omero.gateway.ImageWrapper or RawPixelsStore
     Omero Image object from conn.getObjects() or initialized rps
 dim: tuple[int, int]
-    tuple containing desired x,y dimensions. 
+    tuple containing desired x,y dimensions.
 
 Returns
 -------
 int
-    resolution level to be used in rps.setResolution() 
+    resolution level to be used in rps.setResolution()
 tuple[int,int,int,int]
     height, width, tilesize_y, tilesize_x of closest resolution
     """
@@ -228,7 +228,7 @@ tuple[int,int,int,int]
         rps = img._conn.createRawPixelsStore()
         rps.setPixelsId(img.getPrimaryPixels().getId(), True)
         close_rps=True
-        
+
     # get res info
     lvls = rps.getResolutionLevels()
     resolutions = rps.getResolutionDescriptions()
@@ -252,7 +252,7 @@ tuple[int,int,int,int]
     tileSize=rps.getTileSize()
     return lvls, (resolutions[i-1].sizeX,resolutions[i-1].sizeY,
                              tileSize[0], tileSize[1])
-        
+
 
 
 def getChannelsAtResolution(img: ImageWrapper, xy_dim: tuple[int,int], channels:list[int]=None) -> Image.Image:
@@ -271,11 +271,11 @@ xy_dim: tuple(x,y)
     Tuple of desired dimensions (x,y)
 channels: tuple(int,...), default: all channels
     Array of channels to gather.
-    To grab only blue channel: channels=(2) 
+    To grab only blue channel: channels=(2,)
 
 Returns
 -------
-PIL.Image.Image 
+PIL.Image.Image
     Python Image Object
     """
     async def work(img, xy, channels):
@@ -287,15 +287,15 @@ PIL.Image.Image
             async for tile, (z,c,t,coord) in getTiles(img,tiles,res_lvl):
                 arr [
                     coord[1]:coord[1]+coord[3],
-                    coord[0]:coord[0]+coord[2], 
-                    c ] = tile 
+                    coord[0]:coord[0]+coord[2],
+                    c ] = tile
             image = Image.fromarray(arr)
             if image.size != xy:
                 del arr # just to be safe
                 image = image.resize(xy)
             images.append(image)
         return images
-    
+
     return asyncio.run(work(img, xy_dim, channels))
 
 def getImageAtResolution(img: ImageWrapper, xy_dim: tuple[int,int]) -> Image.Image:
@@ -315,7 +315,7 @@ xy_dim: tuple(x,y)
 
 Returns
 -------
-PIL.Image.Image 
+PIL.Image.Image
     Python Image Object
     """
     async def work(img, xy):
@@ -326,16 +326,16 @@ PIL.Image.Image
         async for tile, (z,c,t,coord) in getTiles(img,tiles,res_lvl):
             arr [
                 coord[1]:coord[1]+coord[3],
-                coord[0]:coord[0]+coord[2], 
-                c ] = tile 
-            
+                coord[0]:coord[0]+coord[2],
+                c ] = tile
+
         image = Image.fromarray(arr)
         if image.size != xy:
             del arr # just to be safe
             image = image.resize(xy)
-            
+
         return image
-    
+
     return asyncio.run(work(img, xy_dim))
 
 
@@ -372,8 +372,8 @@ str
         xy_dim = getDownsampledXYDimensions(img, downsample_factor)
         reconPath = workdir + os.sep + f"LR{downsample_factor}_{name.replace('.ome.tiff',f_ext)}"
         recon = img.getAnnotation(namespace)
-        
-        if recon is None: 
+
+        if recon is None:
                 print(f"Downsampling: {name} from {(sizeX,sizeY)} to {xy_dim}")
                 recon_img = getImageAtResolution(img, xy_dim)
                 recon_img.filename = reconPath
@@ -383,9 +383,9 @@ str
                     print("Downsampling Complete! Uploading to OMERO...")
                     recon = img._conn.createFileAnnfromLocalFile(reconPath, mimetype=mimetype, ns=namespace)
                     img.linkAnnotation(recon)
-        else:
-            reconPath = downloadFileAnnotation(recon, workdir)
-            recon_img = Image.open(reconPath)
+    else:
+        reconPath = downloadFileAnnotation(recon, workdir)
+        recon_img = Image.open(reconPath)
 
     return recon, recon_img
 
@@ -420,11 +420,11 @@ tile_size: tuple(int, int)
 
 Returns
 -------
-list 
-    list of (z,c,t,(x,y,w,h)) tiles for use in getTiles 
-    """ 
+list
+    list of (z,c,t,(x,y,w,h)) tiles for use in getTiles
+    """
     tileList = []
-    width, height = tile_size 
+    width, height = tile_size
     for y in range(0, size_y, height):
         width, height = tile_size # reset tile size
         # if tileheight is greater than remaining pixels, get remaining pixels
@@ -436,7 +436,7 @@ list
     return tileList
 
 
-def createFullTileList(z_indexes: int, channels: int, timepoints: int, width: int, height:int, 
+def createFullTileList(z_indexes: int, channels: int, timepoints: int, width: int, height:int,
         tile_size:tuple[int,int], weave=False) -> list[tuple[int,int,int,tuple[int,int,int,int]]]:
     """
 Creates a list of all tiles for given dimensions.
@@ -459,9 +459,9 @@ weave: bool, Default: False
 
 Returns
 -------
-list 
-    list of (z,c,t,(x,y,w,h)) tiles for use in getTiles 
-    
+list
+    list of (z,c,t,(x,y,w,h)) tiles for use in getTiles
+
 
 Examples
 --------
@@ -484,7 +484,7 @@ Setting weave True will mix the channels together. Used  for writing RGB images
 ```
 """
     tileList = []
-    if weave is True: 
+    if weave is True:
         origC = channels
         channels = (0)
     for z in z_indexes:
@@ -493,11 +493,11 @@ Setting weave True will mix the channels together. Used  for writing RGB images
                 if weave is True:
                     tileChannels = []
                     for channel in origC:
-                        tileChannels.append(createTileList2D(z,channel,t,width, height, tile_size)) 
+                        tileChannels.append(createTileList2D(z,channel,t,width, height, tile_size))
                     tileList.extend(interlace_lists(tileChannels))
                 else:
                     tileList.extend(createTileList2D(z,c,t,width, height, tile_size))
-        
+
     return tileList
 
 def createTileListFromImage(img: ImageWrapper, rgb=False, include_z=True, include_t=True) -> list[int,int,int,tuple[int,int,int,int]]:
@@ -509,7 +509,7 @@ Parameters
 img: omero.gateway.ImageWrapper
     Omero Image object from conn.getObjects().
 rgb: bool, Default: False.
-    Puts tile channels next to each other. 
+    Puts tile channels next to each other.
 include_z: bool, Default: True
     get tiles for z indexes
 include_t: bool, Default: True
@@ -517,10 +517,10 @@ include_t: bool, Default: True
 
 Returns
 -------
-list 
+list
     List of (z,c,t,(x,y,w,h)) tiles for use in getTiles.
     """
-    width = range(img.getSizeX()) 
+    width = range(img.getSizeX())
     height = range(img.getSizeY())
     z_indexes = range(img.getSizeZ())
     timepoints = range(img.getSizeT())
@@ -539,7 +539,7 @@ list
 #
 ## ROIS
 #
-def getShapesAsPoints(img: ImageWrapper, point_downsample=4, img_downsample=1, 
+def getShapesAsPoints(img: ImageWrapper, point_downsample=4, img_downsample=1,
                       roi_service=None) -> list[tuple[int, tuple[int,int,int], list[tuple[float, float]]]]:
     """
 Gathers Rectangles, Polygons, and Ellipses as a tuple containing the shapeId, its rgb val, and a tuple of yx points of its bounds.
@@ -574,7 +574,7 @@ returns: list[ shape.id, (r,g,b), list[tuple(x,y)] ]
     for roi in result.rois:
         points= None
         for shape in roi.copyShapes():
-            
+
             if type(shape) == RectangleI:
                 x = float(shape.getX().getValue()) / img_downsample
                 y = float(shape.getY().getValue()) / img_downsample
@@ -589,8 +589,8 @@ returns: list[ shape.id, (r,g,b), list[tuple(x,y)] ]
                             float(shape._radiusY._val / img_downsample),float(shape._radiusX._val / img_downsample),
                             shape=yx_shape)
                 points = [(points[1][i], points[0][i]) for i in range(0, len(points[0]))]
-                
-            
+
+
             if type(shape) == PolygonI:
                 pointStrArr = shape.getPoints()._val.split(" ")
 
@@ -606,12 +606,12 @@ returns: list[ shape.id, (r,g,b), list[tuple(x,y)] ]
                 color_val = shape.getStrokeColor()._val
                 rgb = uint_to_rgba(color_val)[:2] # ignore alpha value for computation
                 points=(points[0][::point_downsample], points[1][::point_downsample])
-                
+
                 shapes.append((shape.getId()._val, rgb, points))
 
     if not shapes : # if no shapes in shapes return none
         return None
-    
+
     if close_roi: roi_service.close()
 
     # make sure is in correct order
@@ -619,13 +619,13 @@ returns: list[ shape.id, (r,g,b), list[tuple(x,y)] ]
 
 
 def createPolygon(points:list[tuple[float, float]], stride=1, x_offset=0, y_offset=0, z=None, t=None, comment=None, rgb=(0,0,0)) -> PolygonI:
-    """ 
+    """
 Creates a local omero polygon obj from a list of points, and parameters.
 
 Notes
 -----
 Remember to scale points to full image resolution!
-    
+
 Parameters
 ----------
 points: list[tuple[int,int]]
@@ -642,9 +642,9 @@ t: int, optional
     Allows polygon to exist in a specific timepoint for multi dimensional ROIs.
 comment: str, optional
     Description of polygon, recommended to use to keep track of which programs generate which shapes.
-rgb: tuple[int,int,int], Default: (0,0,0) 
+rgb: tuple[int,int,int], Default: (0,0,0)
     What color should this polygon's outline be.
-    
+
 Returns
 -------
 omero_model_PolygonI.PolygonI
@@ -696,7 +696,7 @@ omero_model_RoiI.RoiI
 
 
 # TODO SLOW AND broken for rgb = 0,0,0 annotations
-# def getShapesAsMasks(img: ImageWrapper, downsample: int, bool_mask=True, 
+# def getShapesAsMasks(img: ImageWrapper, downsample: int, bool_mask=True,
 #                      point_downsample=4, roi_service=None) -> list[np.ndarray]:
 #     """
 # Gathers Rectangles, Polygons, and Ellipses as masks for the image at the given downsampling
@@ -707,13 +707,13 @@ omero_model_RoiI.RoiI
 
 #     masks=[]
 #     for id, rgb, points in getShapesAsPoints(img, point_downsample, downsample, roi_service):
-#         if bool_mask is True: 
+#         if bool_mask is True:
 #             val = 1
 #             dtype = np.bool_
 #             arr_shape=(sizeY,sizeX)
-#         else: 
+#         else:
 #             # want to overwrite region completely, cannot have 0 value
-#             for i, c in enumerate(rgb): 
+#             for i, c in enumerate(rgb):
 #                 if c == 0: rgb[i]=1
 
 #             val = rgb
@@ -727,12 +727,12 @@ omero_model_RoiI.RoiI
 
 #     if not masks: # if masks is empty, return none
 #         return None
-    
+
 #     return masks
 
-# 
+#
 ## FILES
-#  
+#
 
 def downloadFileAnnotation(file_annot: FileAnnotationWrapper, outdir=".") -> str:
     """
@@ -742,12 +742,12 @@ Parameters
 ----------
 file_annot: omero.gateway.FileAnnotationWrapper
     Remote Omero File Annotation object.
-out_dir: str, Default: '.' 
+out_dir: str, Default: '.'
     Where to download this file.
 
 Returns
 -------
-str 
+str
     String path to downloaded file.
     """
     path = os.path.abspath(outdir) + os.sep + file_annot.getFile().getName()
@@ -791,7 +791,7 @@ int
     finally:
         scriptService.close()
 
-def uploadFileAsAnnotation(parent_obj: ImageWrapper, file_path: str, namespace:str, 
+def uploadFileAsAnnotation(parent_obj: ImageWrapper, file_path: str, namespace:str,
         mime:str=None, overwrite=True) -> FileAnnotationI:
     """
 Uploads a given filepath to omero as an annotation for parent_obj under namespace.
@@ -800,9 +800,9 @@ parent_obj: omero.gateway.ParentWrapper
     Object that should own the annotation. (typically an ImageWrapper)
 file_path: str
     Local path of file to upload as annotation.
-namespace: str 
+namespace: str
     Remote namespace to put the file annotation
-mime: str, optional 
+mime: str, optional
     Mimetype for filetype. If None this will be guessed based on file extension and filetype dictionary
 overwrite: bool, Default: True
     Overwrites existing file annotation in this namespace.
@@ -817,9 +817,9 @@ return: omero.gateway.FileAnnotationWrapper
             lookup_filetype_by_name(file_path),
             FILETYPE_DICTIONARY["GENERIC_FILES"]["TXT"]
         )["MIME"]
-        
+
     # if overwrite is true and an annotation already exists in this namespace, delete it
-    if overwrite is True: 
+    if overwrite is True:
         obj = parent_obj.getAnnotation(namespace)
         if obj is not None:
             conn.deleteObjects('Annotation',[obj.id], wait=True)
@@ -840,7 +840,7 @@ Parameters
 ----------
 conn: omero.gateway.BlitzGateway
     An Omero BlitzGateway with a session.
-dType: str 
+dType: str
     String data type, should be one of: 'Image','Dataset', or 'Project'
 rawIds: list[int]
     ids for datatype
@@ -860,6 +860,6 @@ return: list[int]
             for image in conn.getObjects('image', opts={'dataset' : datasetId}) :
                 ids.append(image.getId())
     # else rename image ids
-    else : 
+    else :
         ids = rawIds
     return ids
