@@ -134,7 +134,7 @@ asyncio.run(work(img, tiles, res_lvl, dims))
         # set res and get default res level if necessary
         if resLvl is None:
             resLvl = await rps.getResolutionLevels()
-        await rps.setResolutionLevel(resLvl)
+        await rps.setResolutionLevel(resLvl-1)
 
         # request and return tiles
         i=1
@@ -152,7 +152,7 @@ asyncio.run(work(img, tiles, res_lvl, dims))
 
     # create parallel raw pixels stores
     jobs=[]
-    for chunk in chunkify(tiles, PARALLEL_STORE_COUNT):
+    for chunk in chunkify(tiles, int(len(tiles)/PARALLEL_STORE_COUNT)):
         jobs.append(work(img.getPrimaryPixels().getId(), chunk, resLvl))
     return merge_async_iters(*jobs)
 
