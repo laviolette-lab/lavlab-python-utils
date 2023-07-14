@@ -540,6 +540,31 @@ list
 #
 ## ROIS
 #
+
+def getRois(img: ImageWrapper, roi_service=None):
+    """
+Gathers OMERO RoiI objects.
+
+Parameters
+----------
+img: omero.gateway.ImageWrapper
+    Omero Image object from conn.getObjects()
+roi_service: omero.RoiService, optional
+    Allows roiservice passthrough for performance
+    """
+    if roi_service is None:
+        roi_service = img._conn.getRoiService()
+        close_roi = True
+    else:
+        close_roi = False
+
+    rois = roi_service.findByImage(img.getId(), None, img._conn.SERVICE_OPTS).rois
+
+    if close_roi:
+        roi_service.close()
+
+    return rois
+
 def getShapesAsPoints(img: ImageWrapper, point_downsample=4, img_downsample=1,
                       roi_service=None) -> list[tuple[int, tuple[int,int,int], list[tuple[float, float]]]]:
     """
@@ -561,18 +586,13 @@ Returns
 returns: list[ shape.id, (r,g,b), list[tuple(x,y)] ]
     list of tuples containing a shape's id, rgb value, and a tuple of row and column points
     """
-    if roi_service is None:
-        roi_service=img._conn.getRoiService()
-        close_roi=True
 
     sizeX = img.getSizeX() / img_downsample
     sizeY = img.getSizeY() / img_downsample
     yx_shape = (sizeY,sizeX)
 
-    result = roi_service.findByImage(img.getId(), None)
-
     shapes=[]
-    for roi in result.rois:
+    for roi in getRois(img, roi_service):
         points= None
         for shape in roi.copyShapes():
 
@@ -612,8 +632,6 @@ returns: list[ shape.id, (r,g,b), list[tuple(x,y)] ]
 
     if not shapes : # if no shapes in shapes return none
         return None
-
-    if close_roi: roi_service.close()
 
     # make sure is in correct order
     return sorted(shapes)
