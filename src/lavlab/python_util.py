@@ -121,8 +121,8 @@ def chunkify(lst: list, n: int):
     list[list*n]
         lst split into n chunks.
     """
-    return [lst[i : i + n] for i in range(0, len(lst), n)]
-
+    lst_len=len(lst)
+    return [lst[i : i + n] for i in range(0, lst_len, int(lst_len/n)+1)]
 
 def interlace_lists(*lists: list[list]) -> list:
     """
