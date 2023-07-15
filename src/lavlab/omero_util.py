@@ -292,8 +292,12 @@ PIL.Image.Image
                 image = image.resize(xy)
             images.append(image)
         return images
-
-    return asyncio.run(work(img, xy_dim, channels))
+    
+    event_loop = asyncio.get_running_loop()
+    if event_loop is None:
+        return asyncio.run(work(img, xy_dim, channels))
+    else:
+        return work(img,xy_dim,channels)
 
 def getImageAtResolution(img: ImageWrapper, xy_dim: tuple[int,int]) -> Image.Image:
     """
@@ -329,7 +333,11 @@ PIL.Image.Image
 
         return image
 
-    return asyncio.run(work(img, xy_dim))
+    event_loop = asyncio.get_running_loop()
+    if event_loop is None:
+        return asyncio.run(work(img, xy_dim))
+    else:
+        return work(img, xy_dim)
 
 def getLargeRecon(img:ImageWrapper, downsample_factor:int = 10, workdir='./', skip_upload=False):
     """
