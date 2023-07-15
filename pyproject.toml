@@ -1,7 +1,7 @@
 [project]
 name = "lavlab-python-utils"
 description = "LaViolette Lab utility package"
-version = "1.1.4"
+version = "1.2.0"
 
 authors = [
   { name="Michael Barrett", email="mjbarrett@mcw.edu" },
