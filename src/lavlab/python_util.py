@@ -3,9 +3,14 @@ from __future__ import annotations
 Contains general utilities for lavlab's python scripts.
 """
 import os
+import psutil
 import asyncio
+import tempfile
+from math import ceil
 
 import numpy as np
+import dask.array as da
+
 from PIL import Image, ImageDraw
 from skimage import measure
 
@@ -121,8 +126,11 @@ def chunkify(lst: list, n: int):
     list[list*n]
         lst split into n chunks.
     """
-    lst_len=len(lst)
-    return [lst[i : i + n] for i in range(0, lst_len, int(lst_len/n)+1)]
+    size = ceil(len(lst) / n)
+    return list(
+        map(lambda x: lst[x * size:x * size + size],
+        list(range(n)))
+    )
 
 def interlace_lists(*lists: list[list]) -> list:
     """
@@ -235,6 +243,41 @@ async def desync(it):
 #
 ## Image Array Utilities
 #
+
+def create_array(shape, dtype=np.float64, use_dask=False, chunksize=1e6):
+    """
+Creates a numpy array, a dask array or a memmap array based on the available system memory.
+
+Parameters
+----------
+dtype : np.dtype
+    Data-type of the array’s elements.
+shape : tuple
+    Shape of the array.
+chunksize : int, optional
+    Size of chunks for dask array, by default 1e6.
+use_dask : bool, optional
+    Whether to use dask arrays for large datasets. If False, memmap is used, by default False.
+
+Returns
+-------
+array
+    Numpy array, Dask array or memmap array based on the available system memory.
+    """
+    size = np.prod(shape) * np.dtype(dtype).itemsize
+    free_memory = psutil.virtual_memory().available
+
+    if size < free_memory:
+        return np.zeros(shape, dtype)
+    else:
+        if use_dask:
+            chunks = tuple(max(1, x // chunksize) for x in shape)
+            return da.zeros(shape, dtype, chunks=chunks)
+        else:
+            _, path = tempfile.mkstemp()
+            return np.memmap(path, dtype=dtype, mode='w+', shape=shape)
+
+
 def rgba_to_uint(red: int, green: int, blue: int, alpha=255) -> int:
     """
     Return the color as an Integer in RGBA encoding.
