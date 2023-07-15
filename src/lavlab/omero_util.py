@@ -149,7 +149,7 @@ asyncio.run(work(img, tiles, res_lvl, dims))
 
     # force async client
     session =  omero_asyncio.AsyncSession(img._conn.c.sf)
-
+    session.setSecurityContext(img.details.group)
     # create parallel raw pixels stores
     jobs=[]
     for chunk in chunkify(tiles, int(len(tiles)/PARALLEL_STORE_COUNT)):
@@ -338,6 +338,16 @@ PIL.Image.Image
         return image
 
     return asyncio.run(work(img, xy_dim))
+
+def getFullResImageAsMemMap(img:ImageWrapper, path=None):
+    async def work(img):
+        rv = np.memmap(path, shape=(img.getSizeY(), img.getSizeX(), img.getSizeC()))
+        async for tile, (z,c,t,coord) in getTiles(img,createTileListFromImage(img)):
+            rv[coord[0]:coord[2],coord[1]:coord[3],c] = tile
+        return rv
+    if path is None:
+        _, path = tempfile.mkstemp()
+    return asyncio.run_coroutine_threadsafe(work(img), asyncio.get_event_loop())
 
 
 def getLargeRecon(img:ImageWrapper, downsample_factor:int = 10, workdir='./', skip_upload=False):
