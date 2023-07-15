@@ -1,7 +1,7 @@
 [project]
 name = "lavlab-python-utils"
 description = "LaViolette Lab utility package"
-version = "1.1.4"
+version = "1.1.1"
 
 authors = [
   { name="Michael Barrett", email="mjbarrett@mcw.edu" },
@@ -14,11 +14,10 @@ classifiers = [
     "Operating System :: OS Independent",
 ]
 
-requires-python = ">=3.6"
+requires-python = ">=3.7"
 dependencies = [
   'omero-py >= 5.13.1',
-  'omero-scripts >= 5.7.1',
-  'scikit-image >= 0.19.3'
+  'tiatoolbox >= 1.4.0'
 ]
 
 [project.optional-dependencies]

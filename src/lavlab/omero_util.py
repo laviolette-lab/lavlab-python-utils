@@ -6,11 +6,16 @@ import os
 import asyncio
 import tempfile
 
+from io import BytesIO
+from collections.abc import AsyncGenerator
+
 import numpy as np
 from PIL import Image
-from skimage import draw
 
-from collections.abc import AsyncGenerator
+import scipy.ndimage
+from skimage import draw, morphology 
+
+from tiatoolbox.tools import tissuemask 
 
 from omero.gateway import _BlitzGateway, ImageWrapper, FileAnnotationWrapper, ShapeWrapper
 import omero.model.enums as omero_enums
@@ -388,6 +393,44 @@ str
         recon_img = Image.open(reconPath)
 
     return recon, recon_img
+
+
+#
+## MASKING
+#
+
+def maskTissueLoose(img_obj:ImageWrapper, mpp=728):
+    phys_w = img_obj.getPixelSizeX()
+    downsample_factor = mpp / phys_w
+    scaled_dims = getDownsampledXYDimensions(img_obj, downsample_factor)
+
+    # get img ( at super low res )
+    img = Image.open(BytesIO(img_obj.getThumbnail(scaled_dims)))
+    arr = np.array(img)
+    
+    # # tia tissue masker (too fine for our purposes)
+    mask = tissuemask.MorphologicalMasker(mpp=mpp).fit_transform([arr])[0]
+
+    # clean up mask
+    mask = morphology.remove_small_holes(mask)
+    mask = morphology.remove_small_objects(mask)
+
+    # increase resolution
+    scale = 32/mpp 
+    mask_img=Image.fromarray(mask)
+    full_mask_img = mask_img.resize((int(mask_img.size[0]/scale), int(mask_img.size[1]/scale)))
+    mask_img.close()
+    mask = np.array(full_mask_img)
+    full_mask_img.close()
+    
+    # smooth up mask
+    mask = scipy.ndimage.binary_dilation(mask, iterations=16)
+    mask = scipy.ndimage.gaussian_filter(mask.astype(float), sigma=24)
+    mask = mask > 0.5
+
+    # invert mask
+    return ~mask
+
 
 #
 ## TILES
