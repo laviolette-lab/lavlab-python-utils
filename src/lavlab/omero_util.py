@@ -24,7 +24,7 @@ from omero_model_RectangleI import RectangleI
 from omero_model_FileAnnotationI import FileAnnotationI
 
 from lavlab import omero_asyncio
-from lavlab.python_util import chunkify, merge_async_iters, interlace_lists, lookup_filetype_by_name, FILETYPE_DICTIONARY, rgba_to_uint, uint_to_rgba
+from lavlab.python_util import chunkify, merge_async_iters, interlace_lists, lookup_filetype_by_name, FILETYPE_DICTIONARY, rgba_to_uint, uint_to_rgba, create_array
 
 PARALLEL_STORE_COUNT=4
 """Number of pixel stores to be created for an image."""
@@ -260,10 +260,6 @@ def getChannelsAtResolution(img: ImageWrapper, xy_dim: tuple[int,int], channels:
     """
 Gathers tiles and scales down to desired resolution.
 
-Warns
--------
-Out of Memory issues ahead! Request a reasonable resolution!
-
 Parameters
 ----------
 img: omero.gateway.ImageWrapper
@@ -284,7 +280,7 @@ PIL.Image.Image
         images = []
         for channel in channels:
             tiles = createTileList2D(0,channel,0,*xy_info)
-            arr = np.zeros((xy_info[1], xy_info[0]), np.uint8)
+            arr = create_array((xy_info[1], xy_info[0]), np.uint8)
             async for tile, (z,c,t,coord) in getTiles(img,tiles,res_lvl):
                 arr [
                     coord[1]:coord[1]+coord[3],
@@ -303,10 +299,6 @@ def getImageAtResolution(img: ImageWrapper, xy_dim: tuple[int,int]) -> Image.Ima
     """
 Gathers tiles of full rgb image and scales down to desired resolution.
 
-Warns
--------
-Out of Memory issues ahead! Request a reasonable resolution!
-
 Parameters
 ----------
 img: omero.gateway.ImageWrapper
@@ -323,7 +315,7 @@ PIL.Image.Image
         res_lvl, xy_info = getClosestResolutionLevel(img, xy)
         tiles = createFullTileList([0,],range(3),[0,], xy_info[0],xy_info[1], xy_info[2:])# rgb tile list
 
-        arr = np.zeros((xy_info[1], xy_info[0], 3), np.uint8)
+        arr = create_array((xy_info[1], xy_info[0], 3), np.uint8)
         async for tile, (z,c,t,coord) in getTiles(img,tiles,res_lvl):
             arr [
                 coord[1]:coord[1]+coord[3],
