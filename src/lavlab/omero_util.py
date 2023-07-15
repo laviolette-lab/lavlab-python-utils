@@ -395,6 +395,50 @@ str
     return recon, recon_img
 
 
+def loadFullImageSmart(img_obj: ImageWrapper):
+    """
+Attempts to only request tiles with tissue, with the rest being filled in by white space.
+    """
+    
+    async def work(img, mask):
+        # Overall image dimensions
+        image_width, image_height = img_obj.getSizeX(), img_obj.getSizeY()
+
+        # Scaling factors
+        scale_x = mask.shape[1] / image_width
+        scale_y = mask.shape[0] / image_height
+
+        tiles = createTileListFromImage(img)
+        arr = create_array((image_height, image_width, img.getSizeC()), np.uint8)
+        # Empty list to store tiles that land on the mask
+        tiles_on_land = []
+
+        for z,c,t,tile in tiles:
+            x, y, width, height = tile
+
+            # Calculate downscaled coordinates and dimensions
+            x_ds, y_ds = int(x * scale_x), int(y * scale_y)
+            width_ds, height_ds = int(width * scale_x), int(height * scale_y)
+
+            # Check if any pixel in the corresponding mask area is True (assuming binary mask)
+            if np.any(mask[y_ds:(y_ds+height_ds), x_ds:(x_ds+width_ds)]):
+                tiles_on_land.append((z,c,t,tile))
+        async for tile, (z,c,t,coord) in getTiles(img,tiles_on_land):
+            arr [
+                coord[1]:coord[1]+coord[3],
+                coord[0]:coord[0]+coord[2],
+                c ] = tile
+        return Image.fromarray(arr)
+    
+    mask = maskTissueLoose(img_obj)
+
+    event_loop = asyncio.get_running_loop()
+    if event_loop is None:
+        return asyncio.run(work(img_obj, mask))
+    else:
+        return work(img_obj, mask)
+
+
 #
 ## MASKING
 #
