@@ -16,6 +16,7 @@ classifiers = [
 
 requires-python = ">=3.7"
 dependencies = [
+  'dask',
   'omero-py >= 5.13.1',
   'tiatoolbox >= 1.4.0'
 ]
