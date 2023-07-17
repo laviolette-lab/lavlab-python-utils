@@ -299,7 +299,7 @@ PIL.Image.Image
             images.append(image)
         return images
     
-    event_loop = asyncio.get_running_loop()
+    event_loop = asyncio._get_running_loop()
     if event_loop is None:
         return asyncio.run(work(img, xy_dim, channels))
     else:
@@ -339,7 +339,7 @@ PIL.Image.Image
 
         return image
 
-    event_loop = asyncio.get_running_loop()
+    event_loop = asyncio._get_running_loop()
     if event_loop is None:
         return asyncio.run(work(img, xy_dim))
     else:
@@ -433,7 +433,7 @@ Attempts to only request tiles with tissue, with the rest being filled in by whi
     
     mask = maskTissueLoose(img_obj)
 
-    event_loop = asyncio.get_running_loop()
+    event_loop = asyncio._get_running_loop()
     if event_loop is None:
         return asyncio.run(work(img_obj, mask))
     else:
