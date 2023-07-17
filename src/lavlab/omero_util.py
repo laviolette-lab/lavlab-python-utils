@@ -139,7 +139,8 @@ asyncio.run(work(img, tiles, res_lvl, dims))
         # set res and get default res level if necessary
         if resLvl is None:
             resLvl = await rps.getResolutionLevels()
-        await rps.setResolutionLevel(resLvl-1)
+            resLvl -= 1
+        await rps.setResolutionLevel(resLvl)
 
         # request and return tiles
         i=1
