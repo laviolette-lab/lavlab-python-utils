@@ -4,7 +4,7 @@ Helper functions that handle high-level operations and translating asynchronous 
 """
 import os
 import asyncio
-import tempfile
+import logging
 
 from io import BytesIO
 from collections.abc import AsyncGenerator
@@ -88,6 +88,21 @@ See Also
 lavlab.python_utils.FILETYPE_DICTIONARY : Contains file extensions and mimetypes for commonly used files.
 """
 
+def setOmeroLoggingLevel(level: logging._Level):
+    """
+Sets a given python logging._Level in all omero loggers.
+
+Parameters
+----------
+level: logging._Level
+
+Returns
+-------
+None
+    """
+    for name in logging.root.manager.loggerDict.keys():
+        if name.startswith('omero'):
+            logging.getLogger(name).setLevel(level)
 
 #
 ## IMAGE DATA
@@ -152,10 +167,11 @@ asyncio.run(work(img, tiles, res_lvl, dims))
             else: i+=1
             yield rv, (z,c,t,tile)
 
-
     # force async client
     session =  omero_asyncio.AsyncSession(img._conn.c.sf)
+    # sf's security context is finicky, force correct group
     img._conn.c.sf.setSecurityContext(img.details.group)
+
     # create parallel raw pixels stores
     jobs=[]
     for chunk in chunkify(tiles, PARALLEL_STORE_COUNT):
