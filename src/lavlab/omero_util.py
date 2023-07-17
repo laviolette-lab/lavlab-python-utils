@@ -155,7 +155,7 @@ asyncio.run(work(img, tiles, res_lvl, dims))
 
     # force async client
     session =  omero_asyncio.AsyncSession(img._conn.c.sf)
-    session.setSecurityContext(img.details.group)
+    img._conn.c.sf.setSecurityContext(img.details.group)
     # create parallel raw pixels stores
     jobs=[]
     for chunk in chunkify(tiles, PARALLEL_STORE_COUNT):
