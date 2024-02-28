@@ -1,115 +1,44 @@
 from __future__ import annotations
-"""
-Contains general utilities for lavlab's python scripts.
-"""
-import os
-import psutil
 import asyncio
-import tempfile
 from math import ceil
-
 import numpy as np
-import dask.array as da
-
-from PIL import Image, ImageDraw
-from skimage import measure
-
-#
-## Utility Dictionary
-#
-FILETYPE_DICTIONARY = {
-    "SKIMAGE_FORMATS": {
-        "JPEG": {"EXT": ".jpg", "MIME": "image/jpg"},
-        "TIFF": {"EXT": ".tif", "MIME": "image/tiff"},
-        "PNG": {"EXT": ".png", "MIME": "image/png"},
-    },
-    "MATLAB_FORMATS": {
-        "M": {"EXT": ".m", "MIME": "text/plain", "MATLAB_MIME": "application/matlab-m"},
-        "MAT": {
-            "EXT": ".mat",
-            "MIME": "application/octet-stream",
-            "MATLAB_MIME": "application/matlab-mat",
-        },
-    },
-    "GENERIC_FORMATS": {"TXT": {"EXT": ".txt", "MIME": "text/plain"}},
-}
-"""
-Contains file extensions and mimetypes for commonly used files.
-
-MATLAB_FORMATS has special key: MATLAB_MIME. MATLAB_MIME is a proprietary mimetype for MATLAB files. 
-Clients will need to know how to handle MATLAB_MIME. Unless you know you need the MATLAB_MIME, use the normal mimetype.
-
-```
-FILETYPE_DICTIONARY={ 
-    "SKIMAGE_FORMATS": {
-        "JPEG": {
-            "EXT": ".jpg",
-            "MIME": "image/jpg"
-        },
-        "TIFF": {
-            "EXT": ".tif",
-            "MIME": "image/tiff"
-        },
-        "PNG": {
-            "EXT": ".png",
-            "MIME": "image/png"
-        }
-    },
-    "MATLAB_FORMATS": {
-        "M":{
-            "EXT": ".m",
-            "MIME": "text/plain",
-            "MATLAB_MIME": "application/matlab-m"
-        },
-        "MAT":{
-            "EXT": ".mat",
-            "MIME": "application/octet-stream",
-            "MATLAB_MIME": "application/matlab-mat"
-        }
-    },
-    "GENERIC_FORMATS": {
-        "TXT":{
-            "EXT": ".txt",
-            "MIME": "text/plain"
-        }
-    }
-}
-```
-
-See Also
---------
-lavlab.omero_utils.OMERO_DICTIONARY : Dictionary for converting omero info into python equivalents.
-"""
-
-
-#
-## Utility Dictionary Utilities
-#
-def lookup_filetype_by_name(file: str) -> tuple[str, str]:
-    """
-    Searches dictionary for a matching filetype using the filename's extension.
-
-    Parameters
-    ----------
-    file: str
-        Filename to lookup type of.
-
-    Returns
-    -------
-    tuple[str, str]
-        Returns filetype set (SKIMAGE, MATLAB, etc) and the filetype key (JPEG, MAT, etc)
-    """
-    filename, f_ext = os.path.splitext(file)
-    for set in FILETYPE_DICTIONARY:
-        for format in FILETYPE_DICTIONARY[set]:
-            ext = FILETYPE_DICTIONARY[set][format]["EXT"]
-            if ext == f_ext:
-                return set, format
-
+import tempfile
+from lavlab import ctx
 
 #
 ## Python Utilities
 #
+def is_memsafe_array(shape, dtype=np.float64):
+    size = np.prod(shape) * np.dtype(dtype).itemsize
+
+    if size < ctx.max_memory:
+        return True
+    else:
+        return False
+
+def create_array(shape: tuple[int], dtype=np.float64):
+    """
+Creates an in-memory numpy array or a disk-based memmap array based on the available system memory.
+
+Parameters
+----------
+shape : tuple
+    Shape of the array.
+dtype : np.dtype, Default: np.float64
+    Data-type of the array’s elements.
+
+Returns
+-------
+array
+    Numpy in-memory array or memmap array based on the available system memory.
+    """
+    if is_memsafe_array(shape, dtype):
+        return np.zeros(shape, dtype)
+    else:
+        _, path = tempfile.mkstemp()
+        return np.memmap(path, dtype=dtype, mode='w+', shape=shape)
+
+
 def chunkify(lst: list, n: int):
     """
     Breaks list into n chunks.
@@ -239,64 +168,29 @@ async def desync(it):
     for x in it:
         yield x
 
-
 #
-## Image Array Utilities
+## Color Utilities
 #
-
-def create_array(shape, dtype=np.float64, use_dask=False, chunksize=1e6):
+def rgba_to_uint(red: int, green: int, blue: int, alpha=255) -> int:
     """
-Creates a numpy array, a dask array or a memmap array based on the available system memory.
+Return the color as an Integer in RGBA encoding.
 
 Parameters
 ----------
-dtype : np.dtype
-    Data-type of the array’s elements.
-shape : tuple
-    Shape of the array.
-chunksize : int, optional
-    Size of chunks for dask array, by default 1e6.
-use_dask : bool, optional
-    Whether to use dask arrays for large datasets. If False, memmap is used, by default False.
+red: int
+    Red color val (0-255)
+green: int
+    Green color val (0-255)
+blue: int
+    Blue color val (0-255)
+alpha: int
+    Alpha opacity val (0-255)
 
 Returns
 -------
-array
-    Numpy array, Dask array or memmap array based on the available system memory.
+int
+    Integer encoding rgba value.
     """
-    size = np.prod(shape) * np.dtype(dtype).itemsize
-    free_memory = psutil.virtual_memory().available
-
-    if size < free_memory:
-        return np.zeros(shape, dtype)
-    else:
-        if use_dask:
-            chunks = tuple(max(1, x // chunksize) for x in shape)
-            return da.zeros(shape, dtype, chunks=chunks)
-        else:
-            _, path = tempfile.mkstemp()
-            return np.memmap(path, dtype=dtype, mode='w+', shape=shape)
-
-
-def rgba_to_uint(red: int, green: int, blue: int, alpha=255) -> int:
-    """
-    Return the color as an Integer in RGBA encoding.
-
-    Parameters
-    ----------
-    red: int
-        Red color val (0-255)
-    green: int
-        Green color val (0-255)
-    blue: int
-        Blue color val (0-255)
-    alpha: int
-        Alpha opacity val (0-255)
-
-    Returns
-    -------
-    int
-        Integer encoding rgba value."""
     r = red << 24
     g = green << 16
     b = blue << 8
@@ -336,101 +230,3 @@ def uint_to_rgba(uint: int) -> int:
 
     return red, green, blue, alpha
 
-
-def draw_shapes(
-    input_img: Image.Image or np.ndarray,
-    shape_points: tuple[int, tuple[int, int, int], tuple[np.ndarray, np.ndarray]],
-) -> None:
-    """
-    Draws a list of shape points onto the input numpy array.
-
-    Warns
-    -------
-    NO SAFETY CHECKS! MAKE SURE input_img AND shape_points ARE FOR THE SAME DOWNSAMPLE FACTOR!
-
-    Parameters
-    ----------
-    input_img: np.ndarray
-        3 channel numpy array
-    shape_points: tuple(int, tuple(int,int,int), tuple(row, col))
-        Expected to use output from lavlab.omero_util.getShapesAsPoints
-
-    Returns
-    -------
-    ``None``
-    """
-    # need PIL image for processing
-    arr = None
-    if type(input_img) is np.ndarray:
-        arr = input_img
-        input_img = Image.fromarray(arr)
-
-    # use pil imagedraw
-    draw = ImageDraw.Draw(input_img)
-    for id, rgb, xy in shape_points:
-        draw.polygon(xy, fill=rgb)
-
-    # but need to save changes to numpy if that's the input
-    if arr is not None:
-        new_arr = np.array(input_img)
-        np.copyto(arr, new_arr, where=not None)
-
-
-def apply_mask(img_bin: np.ndarray or Image, mask_bin: np.ndarray, where=None):
-    """
-    Essentially an alias for np.where()
-
-    Notes
-    -----
-    DEPRECATED
-
-    Parameters
-    ----------
-    img_bin: np.ndarray or PIL.Image
-        Image as numpy array.
-    mask_bin: np.ndarray
-        Mask as numpy array.
-    where: conditional, optional
-        Passthrough for np.where conditional.
-
-    Returns
-    -------
-    tuple[np.ndarray, np.ndarray]
-        Where and where not arrays"""
-    if issubclass(type(img), Image.Image):
-        img = np.array(img)
-    if where is None:
-        where = mask_bin != 0
-    return np.where(where, mask_bin, img_bin)
-
-
-def get_color_region_contours(
-    img: np.ndarray or Image, rgb_val: tuple[int, int, int], axis=-1
-) -> np.ndarray:
-    """
-    Finds the contours of all areas with a given rgb value. Useful for finding drawn ROIs.
-
-    Parameters
-    ----------
-    img: np.ndarray or PIL.Image
-        Image with ROIs. Converts PIL Image to np array for processing.
-    rgb_val: tuple[int,int,int]
-        Red, Green, and Blue values for the roi color.
-    axis: int, Default: -1
-        Which axis is the color channel. Default is the last axis [:,:,color]
-
-    Returns
-    -------
-    list[ tuple[int(None), rgb_val, contours] ]
-        Returns list of lavlab shapes.
-    """
-    if issubclass(type(img), Image.Image):
-        img = np.array(img)
-    mask_bin = np.all(img == rgb_val, axis=axis)
-    contours = measure.find_contours(mask_bin, level=0.5)
-    del mask_bin
-    # wrap in lavlab shape convention
-    for i, contour in enumerate(contours):
-        contour = [(x, y) for y, x in contour]
-        contours[i] = (None, rgb_val, contour)
-    return contours

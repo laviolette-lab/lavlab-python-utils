@@ -3,22 +3,23 @@ from __future__ import annotations
 Helper functions that handle high-level operations and translating asynchronous requests for easy development.
 """
 import os
+import atexit
 import asyncio
 import logging
+import threading
 
 from io import BytesIO
-from collections.abc import AsyncGenerator
+from concurrent.futures import as_completed
 
 import numpy as np
-from PIL import Image
+import pyvips as pv
 
 import scipy.ndimage
-from skimage import draw, morphology 
+from skimage import draw, morphology
 
-from tiatoolbox.tools import tissuemask 
+from tiatoolbox.tools import tissuemask
 
-from omero.gateway import _BlitzGateway, ImageWrapper, FileAnnotationWrapper, ShapeWrapper
-import omero.model.enums as omero_enums
+from omero.gateway import _BlitzGateway, ImageWrapper, FileAnnotationWrapper, ShapeWrapper,PixelsWrapper
 from omero.rtypes import rint, rstring
 
 from omero_model_RoiI import RoiI
@@ -28,338 +29,24 @@ from omero_model_PolygonI import PolygonI
 from omero_model_RectangleI import RectangleI
 from omero_model_FileAnnotationI import FileAnnotationI
 
-from lavlab import omero_asyncio
-from lavlab.python_util import chunkify, merge_async_iters, interlace_lists, lookup_filetype_by_name, FILETYPE_DICTIONARY, rgba_to_uint, uint_to_rgba, create_array
+from lavlab import imsuite, ctx
+from lavlab.python_util import chunkify, merge_async_iters, interlace_lists, rgba_to_uint, uint_to_rgba, create_array
 
-PARALLEL_STORE_COUNT=4
-"""Number of pixel stores to be created for an image."""
+import logging
 
-OMERO_DICTIONARY = {
-    # TODO add real pixeltype support
-    "PIXEL_TYPES": {
-        omero_enums.PixelsTypeint8: np.int8,
-        omero_enums.PixelsTypeuint8: np.uint8,
-        omero_enums.PixelsTypeint16: np.int16,
-        omero_enums.PixelsTypeuint16: np.uint16,
-        omero_enums.PixelsTypeint32: np.int32,
-        omero_enums.PixelsTypeuint32: np.uint32,
-        omero_enums.PixelsTypefloat: np.float32,
-        omero_enums.PixelsTypedouble: np.float64,
-    },
-    "BYTE_MASKS": {
-        np.uint8: {
-            "RED": 0xFF000000,
-            "GREEN": 0xFF0000,
-            "BLUE": 0xFF00,
-            "ALPHA": 0xFF
-        }
-    },
-    "SKIMAGE_FORMATS": FILETYPE_DICTIONARY["SKIMAGE_FORMATS"]
-}
-"""
-Dictionary for converting omero info into python equivalents.
 
-```
-OMERO_DICTIONARY = {
-"PIXEL_TYPES": {
-    omero_enums.PixelsTypeint8: np.int8,
-    omero_enums.PixelsTypeuint8: np.uint8,
-    omero_enums.PixelsTypeint16: np.int16,
-    omero_enums.PixelsTypeuint16: np.uint16,
-    omero_enums.PixelsTypeint32: np.int32,
-    omero_enums.PixelsTypeuint32: np.uint32,
-    omero_enums.PixelsTypefloat: np.float32,
-    omero_enums.PixelsTypedouble: np.float64,
-},
-"BYTE_MASKS": {
-    np.uint8: {
-        "RED": 0xFF000000,
-        "GREEN": 0xFF0000,
-        "BLUE": 0xFF00,
-        "ALPHA": 0xFF
-    }
-},
-"SKIMAGE_FORMATS": FILETYPE_DICTIONARY["SKIMAGE_FORMATS"]
-}
-```
+#
+## IMAGE DATA HELPERS
+#
 
-See Also
---------
-lavlab.python_utils.FILETYPE_DICTIONARY : Contains file extensions and mimetypes for commonly used files.
-"""
 
-def setOmeroLoggingLevel(level: logging._Level):
-    """
-Sets a given python logging._Level in all omero loggers.
-
-Parameters
-----------
-level: logging._Level
-
-Returns
--------
-None
-    """
-    for name in logging.root.manager.loggerDict.keys():
-        if name.startswith('omero'):
-            logging.getLogger(name).setLevel(level)
 
 #
 ## IMAGE DATA
 #
-def getTiles(img: ImageWrapper, tiles: list[tuple[int,int,int,tuple[int,int,int,int]]],
-            resLvl: int=None, rps_bypass=True) -> AsyncGenerator[tuple[np.ndarray,tuple[int,int,int,tuple[int,int,int,int]]]]:
-    """
-Asynchronous tile generator.
-
-Creates and destroys parallel asynchronous RawPixelsStores to await multiple tiles at once.
-
-Parameters
-----------
-img: omero.gateway.ImageWrapper
-    Omero Image object from conn.getObjects().
-tiles: list[ (z,c,t,(x,y,w,h) ]), ... ]
-    list of tiles to gather.
-resLvl: default: -1
-    what resolution level are these tiles on, default highest res
-rps_bypass: default: True
-    passthrough for rawPixelsStore.setPixelsId(pixels.id, rps_bypass)
-
-Returns
--------
-Async tile generator
-    Python async generator that yields omero tiles as numpy arrays with the tile's coordinates
-
-Examples
---------
-```
-import asyncio
-async def work(img, tiles, res_lvl, dims):
-    bin = np.zeros(dims, np.uint8)
-    async for tile, (z,c,t,coord) in getTiles(img,tiles,res_lvl):
-        bin [
-            coord[1]:coord[1]+coord[3],
-            coord[0]:coord[0]+coord[2],
-            c ] = tile
-    return bin
-asyncio.run(work(img, tiles, res_lvl, dims))
-```
-"""
-    # tile request group
-    async def work(id, tiles, resLvl):
-        # create and init rps for this group
-        rps = await session.createRawPixelsStore()
-        await rps.setPixelsId(id,rps_bypass)
-
-        # set res and get default res level if necessary
-        if resLvl is None:
-            resLvl = await rps.getResolutionLevels()
-            resLvl -= 1
-        await rps.setResolutionLevel(resLvl)
-
-        # request and return tiles
-        i=1
-        tile_len=len(tiles)
-        for z,c,t,tile in tiles:
-            rv = np.frombuffer(await rps.getTile(z,c,t,*tile), dtype=np.uint8)
-            rv.shape=tile[3],tile[2]
-            if i == tile_len: await rps.close()
-            else: i+=1
-            yield rv, (z,c,t,tile)
-
-    # force async client
-    session =  omero_asyncio.AsyncSession(img._conn.c.sf)
-    # sf's security context is finicky, force correct group
-    img._conn.c.sf.setSecurityContext(img.details.group)
-
-    # create parallel raw pixels stores
-    jobs=[]
-    for chunk in chunkify(tiles, PARALLEL_STORE_COUNT):
-        jobs.append(work(img.getPrimaryPixels().getId(), chunk, resLvl))
-    return merge_async_iters(*jobs)
-
-def getDownsampledXYDimensions(img: ImageWrapper, downsample_factor: int) -> tuple[int,int]:
-    """
-Returns XY (rows,columns) dimensions of given image at the downsample.
-
-Parameters
-----------
-img: omero.gateway.ImageWrapper
-    Omero Image object from conn.getObjects().
-downsample_factor: int
-    Takes every nth pixel from the base resolution.
-
-Returns
--------
-float
-    img.getSizeX() / downsample_factor
-float
-    img.getSizeY() / downsample_factor
-"""
-    return (int(img.getSizeX() / int(downsample_factor)), int(img.getSizeY() / int(downsample_factor)))
-
-def getDownsampleFromDimensions(base_shape:tuple[int,...], sample_shape:tuple[int,...]) -> tuple[float,...]:
-    """
-Essentially an alias for np.divide().
-
-Finds the ratio between a base array shape and a sample array shape by dividing each axis.
-
-Parameters
-----------
-base_shape: tuple(int)*x
-    Shape of the larger image. (Image.size / base_nparray.shape)
-sample_shape: tuple(int)*x
-    Shape of the smaller image. (Image.size / sample_nparray.shape)
-
-Raises
-------
-AssertionError
-    Asserts that the input shapes have the same amount of axes
-
-Returns
--------
-tuple(int)*x
-    Returns a tuple containing the downsample factor of each axis for the sample array.
-
-"""
-    assert len(base_shape) == len(sample_shape)
-    return np.divide(base_shape, sample_shape)
-
-
-def getClosestResolutionLevel(img: ImageWrapper, dim: tuple[int,int]) -> tuple[int,tuple[int,int,int,int]]:
-    """
-Finds the closest resolution to desired resolution.
-
-Parameters
-----------
-img: omero.gateway.ImageWrapper or RawPixelsStore
-    Omero Image object from conn.getObjects() or initialized rps
-dim: tuple[int, int]
-    tuple containing desired x,y dimensions.
-
-Returns
--------
-int
-    resolution level to be used in rps.setResolution()
-tuple[int,int,int,int]
-    height, width, tilesize_y, tilesize_x of closest resolution
-    """
-    # if has getResolutionLevels method it's a rawpixelstore
-    if type(img) is hasattr(img, 'getResolutionLevels'): rps = img
-    # else assume it's an ImageWrapper obj and use it to create an rps
-    else:
-        rps = img._conn.createRawPixelsStore()
-        rps.setPixelsId(img.getPrimaryPixels().getId(), True)
-        close_rps=True
-
-    # get res info
-    lvls = rps.getResolutionLevels()
-    resolutions = rps.getResolutionDescriptions()
-
-    # search for closest res
-    for i in range(lvls) :
-        res=resolutions[i]
-        currDif=(res.sizeX-dim[0],res.sizeY-dim[1])
-        # if this resolution's difference is negative in either axis, the previous resolution is closest
-        if currDif[0] < 0 or currDif[1] < 0:
-
-            rps.setResolutionLevel(lvls-i)
-            tileSize=rps.getTileSize()
-
-            if close_rps is True: rps.close()
-
-            return (lvls-i, (resolutions[i-1].sizeX,resolutions[i-1].sizeY,
-                             tileSize[0], tileSize[1]))
-    # else smaller than smallest resolution, return smallest resolution
-    rps.setResolutionLevel(lvls)
-    tileSize=rps.getTileSize()
-    return lvls, (resolutions[i-1].sizeX,resolutions[i-1].sizeY,
-                             tileSize[0], tileSize[1])
 
 
 
-def getChannelsAtResolution(img: ImageWrapper, xy_dim: tuple[int,int], channels:list[int]=None) -> Image.Image:
-    """
-Gathers tiles and scales down to desired resolution.
-
-Parameters
-----------
-img: omero.gateway.ImageWrapper
-    Omero Image object from conn.getObjects().
-xy_dim: tuple(x,y)
-    Tuple of desired dimensions (x,y)
-channels: tuple(int,...), default: all channels
-    Array of channels to gather.
-    To grab only blue channel: channels=(2,)
-
-Returns
--------
-PIL.Image.Image
-    Python Image Object
-    """
-    async def work(img, xy, channels):
-        res_lvl, xy_info = getClosestResolutionLevel(img, xy)
-        images = []
-        for channel in channels:
-            tiles = createTileList2D(0,channel,0,*xy_info)
-            arr = create_array((xy_info[1], xy_info[0]), np.uint8)
-            async for tile, (z,c,t,coord) in getTiles(img,tiles,res_lvl):
-                arr [
-                    coord[1]:coord[1]+coord[3],
-                    coord[0]:coord[0]+coord[2],
-                    c ] = tile
-            image = Image.fromarray(arr)
-            if image.size != xy:
-                del arr # just to be safe
-                image = image.resize(xy)
-            images.append(image)
-        return images
-    
-    event_loop = asyncio._get_running_loop()
-    if event_loop is None:
-        return asyncio.run(work(img, xy_dim, channels))
-    else:
-        return work(img,xy_dim,channels)
-
-def getImageAtResolution(img: ImageWrapper, xy_dim: tuple[int,int]) -> Image.Image:
-    """
-Gathers tiles of full rgb image and scales down to desired resolution.
-
-Parameters
-----------
-img: omero.gateway.ImageWrapper
-    Omero Image object from conn.getObjects().
-xy_dim: tuple(x,y)
-    Tuple of desired dimensions (x,y)
-
-Returns
--------
-PIL.Image.Image
-    Python Image Object
-    """
-    async def work(img, xy):
-        res_lvl, xy_info = getClosestResolutionLevel(img, xy)
-        tiles = createFullTileList([0,],range(3),[0,], xy_info[0],xy_info[1], xy_info[2:])# rgb tile list
-
-        arr = create_array((xy_info[1], xy_info[0], 3), np.uint8)
-        async for tile, (z,c,t,coord) in getTiles(img,tiles,res_lvl):
-            arr [
-                coord[1]:coord[1]+coord[3],
-                coord[0]:coord[0]+coord[2],
-                c ] = tile
-
-        image = Image.fromarray(arr)
-        if image.size != xy:
-            del arr # just to be safe
-            image = image.resize(xy)
-
-        return image
-
-    event_loop = asyncio._get_running_loop()
-    if event_loop is None:
-        return asyncio.run(work(img, xy_dim))
-    else:
-        return work(img, xy_dim)
 
 def getLargeRecon(img:ImageWrapper, downsample_factor:int = 10, workdir='./', skip_upload=False):
     """
@@ -416,7 +103,7 @@ def loadFullImageSmart(img_obj: ImageWrapper):
     """
 Attempts to only request tiles with tissue, with the rest being filled in by white space.
     """
-    
+
     async def work(img, mask):
         # Overall image dimensions
         image_width, image_height = img_obj.getSizeX(), img_obj.getSizeY()
@@ -446,7 +133,7 @@ Attempts to only request tiles with tissue, with the rest being filled in by whi
                 coord[0]:coord[0]+coord[2],
                 c ] = tile
         return Image.fromarray(arr)
-    
+
     mask = maskTissueLoose(img_obj)
 
     event_loop = asyncio._get_running_loop()
@@ -468,7 +155,7 @@ def maskTissueLoose(img_obj:ImageWrapper, mpp=728):
     # get img ( at super low res )
     img = Image.open(BytesIO(img_obj.getThumbnail(scaled_dims)))
     arr = np.array(img)
-    
+
     # # tia tissue masker (too fine for our purposes)
     mask = tissuemask.MorphologicalMasker(mpp=mpp).fit_transform([arr])[0]
 
@@ -477,13 +164,13 @@ def maskTissueLoose(img_obj:ImageWrapper, mpp=728):
     mask = morphology.remove_small_objects(mask)
 
     # increase resolution
-    scale = 32/mpp 
+    scale = 32/mpp
     mask_img=Image.fromarray(mask)
     full_mask_img = mask_img.resize((int(mask_img.size[0]/scale), int(mask_img.size[1]/scale)))
     mask_img.close()
     mask = np.array(full_mask_img)
     full_mask_img.close()
-    
+
     # smooth up mask
     mask = scipy.ndimage.binary_dilation(mask, iterations=16)
     mask = scipy.ndimage.gaussian_filter(mask.astype(float), sigma=24)
@@ -985,3 +672,71 @@ return: list[int]
     else :
         ids = rawIds
     return ids
+
+#
+## general utils
+#
+def getRPSXY(rps):
+    return rps.getResolutionDescriptions()[rps.getResolutionLevels()-1-rps.getResolutionLevel()]
+
+def isRPS(rps):
+    if hasattr(rps, 'getResolutionLevels'):
+        return True
+    return False
+
+def forceRPS(imgOrRPS, bypass=True):
+    """
+    Forces an ImageWrapper or RawPixelsStore to be an RPS object.
+
+    Parameters
+    ----------
+    imgOrRPS: omero.gateway.ImageWrapper or omero.gateway.RawPixelsStore
+        Object to be forced to RPS
+
+    Returns
+    -------
+    omero.gateway.RawPixelsStore
+        RawPixelsStore object
+    """
+    if type(imgOrRPS) is ImageWrapper:
+        rps = imgOrRPS._conn.createRawPixelsStore()
+        rps.setPixelsId(imgOrRPS.getPrimaryPixels().getId(), bypass)
+        return rps, True
+    else:
+        return imgOrRPS, False
+
+def forceImageWrapper(conn, imgOrRPS):
+    """
+    Forces a RawPixelsStore or ImageWrapper to be an ImageWrapper object.
+
+    Parameters
+    ----------
+    imgOrRPS: omero.gateway.RawPixelsStore or omero.gateway.ImageWrapper
+        Object to be forced to ImageWrapper
+    conn: omero.gateway.BlitzGateway
+        Connection object for the OMERO server
+
+    Returns
+    -------
+    omero.gateway.ImageWrapper
+        ImageWrapper object
+    bool
+        True if a new ImageWrapper was created, False otherwise
+    """
+    # if has getResolutionLevels method it's a rawpixelstore
+    if isRPS(imgOrRPS):
+        if conn is None:
+            raise ValueError("Connection object is required to create ImageWrapper from RawPixelsStore")
+
+        qs = conn.getQueryService()
+        pixels_id = imgOrRPS.getPixelsId()
+        pixI = qs.get("PixelsI", pixels_id)
+        qs.close()
+
+        imgI = pixI.getImage()
+        if imgI is None:
+            raise ValueError("Image corresponding to RawPixelsStore could not be found")
+
+        img = conn.getObject('image', imgI.getId().getValue())
+        return img
+    return imgOrRPS
