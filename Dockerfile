@@ -10,15 +10,14 @@ WORKDIR /app
 COPY . /app/
 RUN chown -R vscode /app
 
-# FROM base AS hatch
-# RUN pip3 install hatch
-# ENV HATCH_ENV=default
-# ENTRYPOINT ["hatch", "run"]
+FROM base AS hatch
+RUN pip3 install hatch
+ENV HATCH_ENV=default
+ENTRYPOINT ["hatch", "run"]
 
 FROM base AS dev
 USER vscode
 RUN pip3 install hatch ipykernel
-# RUN hatch build
 RUN pip3 install $(find requirements -name 'requirement*.txt' -exec echo -n '-r {} ' \;)
 
 # FROM base AS prod
