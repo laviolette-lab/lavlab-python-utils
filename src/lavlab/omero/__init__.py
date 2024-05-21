@@ -1,48 +1,72 @@
 import logging
 
-from lavlab import ctx
-from lavlab.login import prompt_kwargs
+from omero.gateway import BlitzGateway
+
+from lavlab.login import AbstractServiceProvider
+import lavlab
+
+try:
+    import idr  # type: ignore
+
+    class IDRServiceProvider(AbstractServiceProvider):
+        """
+        Provides a connection to the IDR using idr-py, primarily for testing purposes.
+        """
+
+        def login(self) -> BlitzGateway:
+            return idr.connection("idr.openmicroscopy.org", "public", "public")
+
+except ImportError:
+    pass
+
 
 LOGGER = logging.getLogger(__name__)
 
-def setOmeroLoggingLevel(level: logging._Level):
+
+# TODO service providers, forcing myself to wait until another update.
+class OmeroServiceProvider(AbstractServiceProvider):
     """
-Sets a given python logging._Level in all omero loggers.
+    Provides a connection to a defined OMERO server using omero-py.
+    """
 
-Parameters
-----------
-level: logging._Level
+    SERVICE = "OMERO"
 
-Returns
--------
-None
+    def login(self) -> BlitzGateway:
+        details = lavlab.ctx.histology.service.copy()
+        if details.get("username") is None or details.get("passwd") is None:
+            username, password = self.cred_provider.get_credentials()
+            details.update({"username": username, "passwd": password})
+
+        conn = BlitzGateway(**details)
+        if conn.connect():
+            return conn
+
+
+def connect() -> BlitzGateway:
+    """
+    Uses the UtilContext to connect to the configured omero server
+
+    Returns
+    -------
+    BlitzGateway
+        omero api gateway
+    """
+    return lavlab.ctx.histology.get_service_provider().login()
+
+
+def setOmeroLoggingLevel(level: str):
+    """
+    Sets a given python logging._Level in all omero loggers.
+
+    Parameters
+    ----------
+    level: logging._Level
+
+    Returns
+    -------
+    None
     """
     LOGGER.info(f"Setting Omero logging level to {level}.")
     for name in logging.root.manager.loggerDict.keys():
-        if name.startswith('omero'):
+        if name.startswith("omero"):
             logging.getLogger(name).setLevel(level)
-
-def parse_login_kwarg_prompts():
-    known_kwargs = ["username", "password", "host", "port", "secure"]
-    rv = {}
-    for key, val in prompt_kwargs('Known kwargs: ' + ', '.join(known_kwargs) + '\n'):
-        if key in known_kwargs:
-            rv[key] = val
-        else:
-            LOGGER.warning(f"Unknown key: {key}")
-    return rv
-
-
-def login(conn, username="", password="", host="", port=None, secure=None):
-    """
-    Attempts to login to an omero server with multiple login flows.
-    """
-    promptSave = False
-    needed_kwargs = []
-    if host == "": # if host is directly provided
-        if ctx.omero_url is None: # if no contextual url
-            needed_kwargs.append("host")
-    if username == "":
-        needed_kwargs.append("username")
-
-

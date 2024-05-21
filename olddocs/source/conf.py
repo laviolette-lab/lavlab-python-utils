@@ -1,6 +1,7 @@
 # Configuration file for the Sphinx documentation builder.
 # to import modules for documenting
 import sys
+
 sys.path.append('../..')
 
 # -- Project information

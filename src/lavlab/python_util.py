@@ -1,45 +1,60 @@
+"""General Python Utilities"""
+
 from __future__ import annotations
+from itertools import zip_longest
 import asyncio
-from math import ceil
-import numpy as np
 import tempfile
-from lavlab import ctx
+from math import ceil
+from typing import AsyncGenerator
+import numpy as np
 
-#
-## Python Utilities
-#
-def is_memsafe_array(shape, dtype=np.float64):
-    size = np.prod(shape) * np.dtype(dtype).itemsize
+import lavlab
 
-    if size < ctx.max_memory:
-        return True
-    else:
-        return False
 
-def create_array(shape: tuple[int], dtype=np.float64):
+def is_memsafe_array(shape: tuple[int, ...], dtype=np.float64) -> bool:
     """
-Creates an in-memory numpy array or a disk-based memmap array based on the available system memory.
+    Checks if a desired array of given shape and datatype is too large for the memory constraints
 
-Parameters
-----------
-shape : tuple
-    Shape of the array.
-dtype : np.dtype, Default: np.float64
-    Data-type of the array’s elements.
+    Parameters
+    ----------
+    shape : tuple[int,...]
+        shape of the array
+    dtype : np.dtype, optional
+        datatype of given array, by default np.float64 for max safety
 
-Returns
--------
-array
-    Numpy in-memory array or memmap array based on the available system memory.
+    Returns
+    -------
+    bool
+        True if the array is safe to create in memory, False if it will blow your pc up.
+    """
+    size = np.prod(shape) * np.dtype(dtype).itemsize
+    return size < lavlab.ctx.resources.max_memory
+
+
+def create_array(shape: tuple[int, ...], dtype=np.float64) -> np.ndarray:
+    """
+    Creates an in-memory array or a disk-based memmap array based on the available system memory.
+
+    Parameters
+    ----------
+    shape : tuple
+        Shape of the array.
+    dtype : np.dtype, Default: np.float64
+        Data-type of the array's elements.
+
+    Returns
+    -------
+    array
+        Numpy in-memory array or memmap array based on the available system memory.
     """
     if is_memsafe_array(shape, dtype):
         return np.zeros(shape, dtype)
-    else:
-        _, path = tempfile.mkstemp()
-        return np.memmap(path, dtype=dtype, mode='w+', shape=shape)
+    # TODO use contextual tempdir
+    _, path = tempfile.mkstemp()
+    return np.memmap(path, dtype=dtype, mode="w+", shape=shape)
 
 
-def chunkify(lst: list, n: int):
+def chunkify(lst: list, n: int) -> list[list]:
     """
     Breaks list into n chunks.
 
@@ -56,12 +71,10 @@ def chunkify(lst: list, n: int):
         lst split into n chunks.
     """
     size = ceil(len(lst) / n)
-    return list(
-        map(lambda x: lst[x * size:x * size + size],
-        list(range(n)))
-    )
+    return list(map(lambda x: lst[x * size : x * size + size], list(range(n))))
 
-def interlace_lists(*lists: list[list]) -> list:
+
+def interlace_lists(*lists: list) -> list:
     """
     Interlaces a list of lists. Useful for combining tileLists of different channels.
 
@@ -80,23 +93,15 @@ def interlace_lists(*lists: list[list]) -> list:
     >>> interlace_lists([1,3],[2,4])
     [1,2,3,4]
     """
-    # get length of new arr
-    length = 0
-    for list in lists:
-        length += len(list)
-
-    # build new array
-    arr = [None] * (length)
-    for i, list in enumerate(lists):
-        # slice index (put in every xth index)
-        arr[i :: len(lists)] = list
-    return arr
+    return [
+        val
+        for tup in zip_longest(*lists, fillvalue=None)
+        for val in tup
+        if val is not None
+    ]
 
 
-#
-## Async Python Utilities
-#
-def merge_async_iters(*aiters):
+def merge_async_iters(*a_iters) -> AsyncGenerator:
     """
     Merges async generators using a asyncio.Queue.
 
@@ -106,7 +111,7 @@ def merge_async_iters(*aiters):
 
     Parameters
     ----------
-    *aiters: AsyncGenerator
+    *a_iters: AsyncGenerator
         AsyncGenerators to merge
 
     Returns
@@ -114,16 +119,16 @@ def merge_async_iters(*aiters):
     AsyncGenerator
         Generator that calls all input generators
     """
-    queue = asyncio.Queue(1)
-    run_count = len(aiters)
+    queue = asyncio.Queue(1)  # type: ignore
+    run_count = len(a_iters)
     cancelling = False
 
-    async def drain(aiter):
+    async def drain(a_iter):
         nonlocal run_count
         try:
-            async for item in aiter:
+            async for item in a_iter:
                 await queue.put((False, item))
-        except Exception as e:
+        except IOError as e:
             if not cancelling:
                 await queue.put((True, e))
             else:
@@ -148,11 +153,11 @@ def merge_async_iters(*aiters):
         for t in tasks:
             t.cancel()
 
-    tasks = [asyncio.create_task(drain(aiter)) for aiter in aiters]
+    tasks = [asyncio.create_task(drain(a_iter)) for a_iter in a_iters]
     return merged()
 
 
-async def desync(it):
+async def desync(it) -> AsyncGenerator:
     """
     Turns sync iterable into an async iterable.
 
@@ -168,28 +173,26 @@ async def desync(it):
     for x in it:
         yield x
 
-#
-## Color Utilities
-#
+
 def rgba_to_uint(red: int, green: int, blue: int, alpha=255) -> int:
     """
-Return the color as an Integer in RGBA encoding.
+    Return the color as an Integer in RGBA encoding.
 
-Parameters
-----------
-red: int
-    Red color val (0-255)
-green: int
-    Green color val (0-255)
-blue: int
-    Blue color val (0-255)
-alpha: int
-    Alpha opacity val (0-255)
+    Parameters
+    ----------
+    red: int
+        Red color val (0-255)
+    green: int
+        Green color val (0-255)
+    blue: int
+        Blue color val (0-255)
+    alpha: int
+        Alpha opacity val (0-255)
 
-Returns
--------
-int
-    Integer encoding rgba value.
+    Returns
+    -------
+    int
+        Integer encoding rgba value.
     """
     r = red << 24
     g = green << 16
@@ -201,7 +204,7 @@ int
     return int(uint)
 
 
-def uint_to_rgba(uint: int) -> int:
+def uint_to_rgba(uint: int) -> tuple[int, int, int, int]:
     """
     Return the color as an Integer in RGBA encoding.
 
@@ -229,4 +232,3 @@ def uint_to_rgba(uint: int) -> int:
     alpha = uint & 0xFF
 
     return red, green, blue, alpha
-

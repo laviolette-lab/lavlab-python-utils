@@ -1,0 +1,32 @@
+default_system_file: "/etc/lavlab.yml"
+default_user_file: "~/.lavlab.yml"
+temp_dir: null  # To be determined by tempfile.gettempdir() if not set
+log_level: "WARNING"
+noninteractive: false
+histology:
+  # can be a single integer or multiplication of multiple integers
+  # size of images that are considered histology
+  size_threshold: 1024 * 1024 * 3
+  service:
+    name: 'omero'
+    host: 'wss://wsi.lavlab.mcw.edu/omero-wss'
+    username: 'cicduser'
+    passwd: 'supersecretpassword'
+    port: '443'
+    secure: true
+  use_fast_compression: true
+  fast_compression_options:
+    compression: "lz4"
+  slow_compression_options:
+    compression: "webp"
+    lossless: true
+  tiling_options:
+    tile: true
+    tile_width: 1024
+    tile_height: 1024
+resources:
+  max_cores: null  # To be determined by multiprocessing.cpu_count() if not set
+  memory_usage: 1
+  max_memory: 1024 * 1024 * 3  # To be determined by psutil.virtual_memory().available * memory_usage if not set
+  io_max_threads: 4
+  max_temp_storage: null # no limit
