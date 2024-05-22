@@ -70,25 +70,11 @@ def test_dicomread():
 
 
 def test_dicomread_volume():
-    # Create a temporary directory with multiple DICOM files
-    import shutil
-    import tempfile
-
-    temp_dir = tempfile.mkdtemp()
-
-    try:
-        # Copy sample DICOM files into the directory to simulate a DICOM series
-        # for i in range(3):  # Assume we simulate with 3 slices
-        #     shutil.copy(get_testdata_file("CT_small.dcm"), os.path.join(temp_dir, f"slice_{i}.dcm"))
-
-        # Test the dicomread_volume function
-        directory = get_testdata_files("dicomdirtests/98892003/MR1")[0]
-        # dicoms from pydicom do not have .dcm extension, ignore it.
-        result = dicomread_volume(directory, file_extension="")
-        assert isinstance(result, np.ndarray), "The result should be a numpy array."
-    finally:
-        # Clean up the temporary directory
-        shutil.rmtree(temp_dir)
+    # Test the dicomread_volume function
+    directory = get_testdata_file("dicomdirtests/98892003/MR1")
+    # dicoms from pydicom do not have .dcm extension, ignore it.
+    result = dicomread_volume(directory, file_extension="")
+    assert isinstance(result, np.ndarray), "The result should be a numpy array."
 
 
 def test_wsiread():

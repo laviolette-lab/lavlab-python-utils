@@ -112,13 +112,14 @@ def dicomread_volume(dicom_dir: os.PathLike, file_extension=".dcm") -> np.ndarra
     ]
 
     # Sort the DICOM files by instance number to ensure correct order
-    dicom_files.sort(key=lambda x: pydicom.dcmread(x).InstanceNumber)
+    dicoms = [pydicom.dcmread(file) for file in dicom_files]
+    dicoms.sort(key=lambda x: x.InstanceNumber)
 
     # Read the first DICOM file to get image dimensions
-    first_ds = pydicom.dcmread(dicom_files[0], stop_before_pixels=True)
+    first_ds = dicoms[0]
     rows = int(first_ds.Rows)
     columns = int(first_ds.Columns)
-    slices = len(dicom_files)
+    slices = len(dicoms)
 
     # Initialize a 3D array to store pixel data
     volume = np.zeros((slices, rows, columns), dtype=np.uint16)
