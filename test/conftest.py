@@ -1,3 +1,5 @@
+# pylint: skip-file
+# type: ignore
 import importlib.resources
 from importlib.metadata import EntryPoint, EntryPoints
 import toml
