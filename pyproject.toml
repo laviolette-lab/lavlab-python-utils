@@ -48,6 +48,7 @@ omero = [
   "omero-py"
 ]
 jupyter = [
+  "jupyter",
   "dash-slicer",
   "dash-bootstrap-components"
 ]
