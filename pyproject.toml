@@ -86,6 +86,7 @@ build = "hatch build && chmod -R 777 dist/*"
 
 [tool.hatch.envs.test]
 dependencies = [
+  "lavlab-python-utils[all]",
   "toml",
   "pytest",
   "pytest-cov",
@@ -97,6 +98,7 @@ cov = "pytest --cov=src --cov-report=term-missing {args:test}"
 
 [tool.hatch.envs.lint]
 dependencies = [
+  "lavlab-python-utils[all]",
   "toml",
   "pytest",
   "pylint",
@@ -116,6 +118,7 @@ check = "mypy --install-types --non-interactive {args:src/lavlab test}"
 
 [tool.hatch.envs.docs]
 dependencies = [
+  "lavlab-python-utils[all]",
   "mkdocs",
   "mkdocstrings",
   "mkdocs-material",
