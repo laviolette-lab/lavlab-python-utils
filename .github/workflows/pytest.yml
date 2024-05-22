@@ -11,6 +11,7 @@ on:
 jobs:
   test:
     runs-on: olympus
+    environment: manual-approval
     steps:
     - uses: actions/checkout@v3
     - name: Build Docker image
