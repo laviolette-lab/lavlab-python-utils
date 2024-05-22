@@ -1,12 +1,16 @@
 name: Run Pytest and Codecov with Hatch
 
-on: 
+on:
   push:
+    branches:
+    - main
   pull_request:
+    branches:
+    - main
 
 jobs:
   test:
-    runs-on: ubuntu-latest
+    runs-on: olympus
     steps:
     - uses: actions/checkout@v3
     - name: Build Docker image
