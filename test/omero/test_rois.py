@@ -4,7 +4,6 @@ from lavlab.omero.rois import get_rois, get_shapes_as_points
 from omero.gateway import RoiWrapper
 
 
-# TODO SAMPLE IMAGE DOES NOT HAVE ROIS :,(  can't find a polygon in the idr to save my life
 def test_get_rois(sample_image):
     # Call the get_rois function
     rois = get_rois(sample_image)
