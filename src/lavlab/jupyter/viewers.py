@@ -1,11 +1,11 @@
 """Jupyter utilities for interacting with images"""
 
 import dash  # type: ignore
+import dash_bootstrap_components as dbc  # type: ignore
 from dash import html  # type: ignore
-from dash.dependencies import Input, Output, State, ALL  # type: ignore
+from dash.dependencies import ALL, Input, Output, State  # type: ignore
 from dash_slicer import VolumeSlicer  # type: ignore
 from dash_slicer.slicer import Slider, Store  # type: ignore
-import dash_bootstrap_components as dbc  # type: ignore
 
 
 class ImageSliceViewer3D:
@@ -131,16 +131,27 @@ class MultiVolumeSliceViewer:
             ]
         )
 
-        self.addSyncFeature()
+        self.add_sync_feature()
 
         if show:
             self.show()
 
     def show(self):
+        """
+        Shows the viewer if not already displayed.
+        """
         # Run the app
         self.app.run_server(debug=True)
 
-    def create_toggle_switch(self):
+    def create_toggle_switch(self) -> dbc.Container:
+        """
+        Creates the toggle for switching between unified and individual slicer views.
+
+        Returns
+        -------
+        dbc.Container
+            Container with button.
+        """
         return dbc.Container(
             [
                 dbc.Row(
@@ -176,7 +187,11 @@ class MultiVolumeSliceViewer:
             fluid=True,
         )
 
-    def addSyncFeature(self):
+    def add_sync_feature(self):
+        """
+        Adds the synchronization feature to the viewer.
+        """
+
         @self.app.callback(
             Output("unified-slider-container", "style"),
             [Input("toggle-switch", "value")],
@@ -184,8 +199,7 @@ class MultiVolumeSliceViewer:
         def toggle_unified_slider_visibility(enabled):
             if 1 in enabled:
                 return {"width": "100%", "text-align": "center"}
-            else:
-                return {"display": "none"}
+            return {"display": "none"}
 
         @self.app.callback(
             Output({"type": "slicer-slider", "index": ALL}, "style"),
@@ -195,9 +209,8 @@ class MultiVolumeSliceViewer:
             if 1 in enabled:
                 # Hide individual sliders
                 return [{"display": "none"} for _ in self.slicers]
-            else:
-                # Show individual sliders
-                return [{"display": "block"} for _ in self.slicers]
+            # Show individual sliders
+            return [{"display": "block"} for _ in self.slicers]
 
         @self.app.callback(
             Output("toggle-output", "children"), [Input("toggle-switch", "value")]
@@ -205,8 +218,7 @@ class MultiVolumeSliceViewer:
         def update_output(value):
             if 1 in value:
                 return "Switch is ON"
-            else:
-                return "Switch is OFF"
+            return "Switch is OFF"
 
         @self.app.callback(
             Output({"context": "app", "scene": ALL, "name": "setpos"}, "data"),
@@ -249,7 +261,8 @@ class MultiVolumeSliceViewer:
 #     """
 #     def __init__(self, volume, figsize=(6, 6), cmap='plasma', downsample_rate=1):
 #         # Downsample and convert the volume to uint8
-#         self.volume = ((volume[::downsample_rate, ::downsample_rate, ::downsample_rate] - volume.min()) /
+#         self.volume = ((volume[::downsample_rate,
+#  ::downsample_rate, ::downsample_rate] - volume.min()) /
 #                        (volume.ptp()) * 255).astype(np.uint8)
 #         self.figsize = figsize
 #         self.cmap = cmap
@@ -289,15 +302,18 @@ class MultiVolumeSliceViewer:
 #             self.fig.canvas.draw_idle()
 
 # class MultiImageSliceViewer3D:
-#     """Allows thumbing through multiple volumes' slices interactively, with the ability to lock the views."""
+#     """Allows thumbing through multiple volumes' slices interactively,
+# with the ability to lock the views."""
 
 #     def __init__(self, volumes, figsize=(6, 6), cmap='plasma', downsample_rate=1):
-#         self.volumes = [((vol[::downsample_rate, ::downsample_rate, ::downsample_rate] - vol.min()) /
+#         self.volumes = [((vol[::downsample_rate, ::downsample_rate,
+#  ::downsample_rate] - vol.min()) /
 #                          vol.ptp() * 255).astype(np.uint8) for vol in volumes]
 #         self.figsize = figsize
 #         self.cmap = cmap
 #         self.num_images = len(self.volumes)
-#         self.v = [np.min([np.min(vol) for vol in self.volumes]), np.max([np.max(vol) for vol in self.volumes])]
+#         self.v = [np.min([np.min(vol) for vol in self.volumes]),
+# np.max([np.max(vol) for vol in self.volumes])]
 #         self.lock_views = False
 #         self.previous_slice_indices = [0] * self.num_images
 
@@ -305,19 +321,22 @@ class MultiVolumeSliceViewer:
 #         self.axs = []
 #         self.imgs = []
 
-#         self.fig, axs = plt.subplots(1, self.num_images, figsize=(self.figsize[0] * self.num_images, self.figsize[1]))
+#         self.fig, axs = plt.subplots(1, self.num_images,
+# figsize=(self.figsize[0] * self.num_images, self.figsize[1]))
 
 #         if not isinstance(axs, np.ndarray):
 #             axs = [axs]
 
 #         for i, vol in enumerate(self.volumes):
-#             slider = ipyw.IntSlider(min=0, max=vol.shape[2]-1, step=1, continuous_update=True, description=f'Image {i+1}:')
+#             slider = ipyw.IntSlider(min=0, max=vol.shape[2]-1, step=1,
+# continuous_update=True, description=f'Image {i+1}:')
 #             self.slice_sliders.append(slider)
 
 #             ax = axs[i]
 #             self.axs.append(ax)
 
-#             img = ax.imshow(self._get_slice(vol, 0), cmap=self.cmap, vmin=self.v[0], vmax=self.v[1])
+#             img = ax.imshow(self._get_slice(vol, 0),
+# cmap=self.cmap, vmin=self.v[0], vmax=self.v[1])
 #             self.imgs.append(img)
 #             self.fig.colorbar(img, ax=ax)
 #             ax.set_title(f'Image {i+1} - Slice 0')

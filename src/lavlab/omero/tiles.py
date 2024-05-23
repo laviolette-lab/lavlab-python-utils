@@ -78,7 +78,8 @@ def get_tiles(
                 yield processed_data, (z, c, t, coord)
         finally:
             futures = [
-                tpe.submit(cleanup) for x in range(tpe._max_workers)
+                tpe.submit(cleanup)
+                for x in range(tpe._max_workers)  # pylint: disable=W0212
             ]  # pylint: disable=W0212
             for future in as_completed(futures):
                 future.result()
@@ -97,7 +98,7 @@ def create_tile_list_2d(
 
     Notes
     -----
-    Tiles are outputed as (z,c,t,(x,y,w,h)) as this is the expected format by omero python bindings.\n
+    Tiles are outputed as (z,c,t,(x,y,w,h)) as this is the expected format by omero python bindings.
     This may cause confusion as numpy uses rows,cols (y,x) instead of x,y.
 
     Parameters
@@ -125,12 +126,10 @@ def create_tile_list_2d(
     for y in range(0, size_y, height):
         width, height = tile_size  # reset tile size
         # if tileheight is greater than remaining pixels, get remaining pixels
-        if size_y - y < height:
-            height = size_y - y
+        height = min(height, size_y - y)
         for x in range(0, size_x, width):
             # if tilewidth is greater than remaining pixels, get remaining pixels
-            if size_x - x < width:
-                width = size_x - x
+            width = min(width, size_x - x)
             tile_list.append((z, c, t, (x, y, width, height)))
     return tile_list
 

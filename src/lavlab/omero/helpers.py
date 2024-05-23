@@ -1,12 +1,12 @@
 """General helper functions for writing OMERO utilities."""
 
-from typing import Union
 from contextlib import contextmanager
+from typing import Union
 
 from omero.gateway import (  # type: ignore
     BlitzGateway,
-    ImageWrapper,
     BlitzObjectWrapper,
+    ImageWrapper,
     ProxyObjectWrapper,
 )
 
@@ -61,9 +61,9 @@ def use_group(obj: BlitzObjectWrapper):
     finally:
         if original_group_id != new_group_id:
             LOGGER.info("Reverting to original group with ID: %s.", original_group_id)
-            obj._conn.SERVICE_OPTS.setOmeroGroup(
+            obj._conn.SERVICE_OPTS.setOmeroGroup(  # pylint: disable=W0212
                 original_group_id
-            )  # pylint: disable=W0212
+            )
 
 
 ## property utilities

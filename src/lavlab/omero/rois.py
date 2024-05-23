@@ -1,11 +1,10 @@
 """Helps access ROIs from OMERO image objects"""
 
 from omero.gateway import ImageWrapper, RoiWrapper, ShapeWrapper  # type: ignore
-from omero_model_RoiI import RoiI  # type: ignore
-from omero_model_PolygonI import PolygonI  # type: ignore
 from omero_model_EllipseI import EllipseI  # type: ignore
+from omero_model_PolygonI import PolygonI  # type: ignore
 from omero_model_RectangleI import RectangleI  # type: ignore
-
+from omero_model_RoiI import RoiI  # type: ignore
 from skimage import draw
 
 from lavlab.python_util import uint_to_rgba
@@ -29,9 +28,9 @@ def get_rois(img: ImageWrapper, roi_service=None) -> RoiWrapper:
         close_roi = False
 
     rois = roi_service.findByImage(
-        img.getId(), None, img._conn.SERVICE_OPTS
-    ).rois  # pylint: disable=W0212
-    rois = [RoiWrapper(img._conn, roi) for roi in rois]
+        img.getId(), None, img._conn.SERVICE_OPTS  # pylint: disable=W0212
+    ).rois
+    rois = [RoiWrapper(img._conn, roi) for roi in rois]  # pylint: disable=W0212
     if close_roi:
         roi_service.close()
 
@@ -156,7 +155,8 @@ def create_roi(img: ImageWrapper, shapes: list[ShapeWrapper]):
 #                      point_downsample=4, roi_service=None) -> list[np.ndarray]:
 #     """
 # Gathers Rectangles, Polygons, and Ellipses as masks for the image at the given downsampling
-# Converts rectangles and ellipses into polygons (4 rectangle points into an array of points on the outline)
+# Converts rectangles and ellipses into polygons
+# (4 rectangle points into an array of points on the outline)
 #     """
 #     sizeX = int(img.getSizeX() / downsample)
 #     sizeY = int(img.getSizeY() / downsample)

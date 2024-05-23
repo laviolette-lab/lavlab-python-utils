@@ -1,9 +1,11 @@
+"""OMERO Utility module"""
+
 import logging
 
-from omero.gateway import BlitzGateway
+from omero.gateway import BlitzGateway  # type: ignore
 
-from lavlab.login import AbstractServiceProvider
 import lavlab
+from lavlab.login import AbstractServiceProvider
 
 try:
     import idr  # type: ignore
@@ -32,6 +34,19 @@ class OmeroServiceProvider(AbstractServiceProvider):
     SERVICE = "OMERO"
 
     def login(self) -> BlitzGateway:
+        """
+        Logins into configured omero server.
+
+        Returns
+        -------
+        BlitzGateway
+            OMERO API gateway
+
+        Raises
+        ------
+        RuntimeError
+            Could not login to OMERO server.
+        """
         details = lavlab.ctx.histology.service.copy()
         if details.get("username") is None or details.get("passwd") is None:
             username, password = self.cred_provider.get_credentials()
@@ -40,6 +55,7 @@ class OmeroServiceProvider(AbstractServiceProvider):
         conn = BlitzGateway(**details)
         if conn.connect():
             return conn
+        raise RuntimeError("Unable to connect to OMERO server.")
 
 
 def connect() -> BlitzGateway:
@@ -54,7 +70,7 @@ def connect() -> BlitzGateway:
     return lavlab.ctx.histology.get_service_provider().login()
 
 
-def setOmeroLoggingLevel(level: str):
+def set_omero_logging_level(level: str):
     """
     Sets a given python logging._Level in all omero loggers.
 
@@ -66,7 +82,7 @@ def setOmeroLoggingLevel(level: str):
     -------
     None
     """
-    LOGGER.info(f"Setting Omero logging level to {level}.")
-    for name in logging.root.manager.loggerDict.keys():
+    LOGGER.info("Setting Omero logging level to %s.", level)
+    for name in logging.root.manager.loggerDict.keys():  # pylint: disable=E1101
         if name.startswith("omero"):
             logging.getLogger(name).setLevel(level)

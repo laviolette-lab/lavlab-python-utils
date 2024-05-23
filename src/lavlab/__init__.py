@@ -11,7 +11,7 @@ import tempfile
 from concurrent.futures import ThreadPoolExecutor
 from enum import Enum
 from importlib.metadata import entry_points
-from typing import Optional
+from typing import Optional, Union
 
 import numpy as np
 import psutil  # type: ignore
@@ -37,6 +37,24 @@ class ServiceProviderFactory:
 
     @staticmethod
     def create_service_provider(service_name: str, **kwargs):
+        """
+        Creates service provider based off registered entry points.
+
+        Parameters
+        ----------
+        service_name : str
+            service name to create provider for.
+
+        Returns
+        -------
+        ServiceProvider
+            Implementation of the service provider.
+
+        Raises
+        ------
+        ValueError
+            Cannot find service provider for the given service name.
+        """
         service_name = service_name.upper()
         entrypoints = tuple(ServiceProviderFactory.entries.select(name=service_name))
         if entrypoints:
@@ -308,6 +326,14 @@ class HistologyContext:  # TODO proper setters and getters
         self.service_provider = None
 
     def get_service_provider(self):
+        """
+        Uses the ServiceProviderFactory to create a service provider based on the configuration.
+
+        Returns
+        -------
+        ServiceProvider
+            Implementation of the service provider.
+        """
         if self.service_provider is None:
             kwargs = self.service
             self.service_provider = ServiceProviderFactory.create_service_provider(
@@ -334,6 +360,14 @@ class ConfigCompiler:
 
     @staticmethod
     def compile(**kwargs) -> dict:
+        """
+        Compiles the configuration from the default, system, and user configs.
+
+        Returns
+        -------
+        dict
+            dictionary containing the compiled configuration.
+        """
         default_config = ConfigCompiler.load_default_config()
         # override defaults with kwargs, primarily for tests
         default_config = ConfigCompiler._merge_configs(default_config, kwargs)
@@ -357,7 +391,7 @@ class ConfigCompiler:
         return final_config
 
     @staticmethod
-    def _read_yaml_config(file_path: os.PathLike) -> dict:
+    def _read_yaml_config(file_path: Union[str, bytes, os.PathLike]) -> dict:
         """Reads config file from the filesystem.
 
         Parameters

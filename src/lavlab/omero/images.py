@@ -6,26 +6,32 @@ from typing import Generator, Optional
 
 import numpy as np
 import scipy  # type: ignore
+from omero.gateway import BlitzGateway, ImageWrapper  # type: ignore
 from skimage import morphology
+
 from lavlab import imsuite, tissuemask
 from lavlab.omero.helpers import (
     force_image_wrapper,
     force_rps,
-    get_downsampled_xy_dimensions,
     get_closest_resolution_level,
+    get_downsampled_xy_dimensions,
     get_rps_xy,
 )
 from lavlab.omero.tiles import (
     create_full_tile_list,
-    get_tiles,
     create_tile_list_from_image,
+    get_tiles,
 )
 from lavlab.python_util import create_array
-from omero.gateway import BlitzGateway, ImageWrapper  # type: ignore
 
 
 def get_plane_at_resolution_level(
-    img: ImageWrapper, res_lvl: int, z: int, c: int, t: int, conn: BlitzGateway = None
+    img: ImageWrapper,
+    res_lvl: int,
+    z_idx: int,
+    c_idx: int,
+    t_idx: int,
+    conn: BlitzGateway = None,
 ) -> np.ndarray:
     """Gets a single 2d plane from an image
 
@@ -64,11 +70,13 @@ def get_plane_at_resolution_level(
 
     if plane_size * 8 > max_bytes:
         arr = create_array((size_y, size_x), np.uint8)
-        tiles = create_full_tile_list([z], [c], [t], size_x, size_y, rps.getTileSize())
-        for tile, (z, c, t, coord) in get_tiles(img, tiles, res_lvl):
+        tiles = create_full_tile_list(
+            [z_idx], [c_idx], [t_idx], size_x, size_y, rps.getTileSize()
+        )
+        for tile, (_, _, _, coord) in get_tiles(img, tiles, res_lvl):
             arr[coord[1] : coord[1] + coord[3], coord[0] : coord[0] + coord[2]] = tile
     else:
-        arr = np.frombuffer(rps.getPlane(z, c, t), dtype=np.uint8).reshape(
+        arr = np.frombuffer(rps.getPlane(z_idx, c_idx, t_idx), dtype=np.uint8).reshape(
             (size_y, size_x)
         )
 
@@ -210,7 +218,7 @@ def pull_large_recon(
         path to large recon
     """
     arr = get_large_recon(img, ds)
-    return imsuite.imwrite(arr, filename)
+    return imsuite.imwrite(arr, filename, **write_args)
 
 
 # TODO this needs some reworking

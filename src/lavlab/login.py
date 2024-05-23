@@ -4,11 +4,13 @@ import getpass
 import json
 import logging
 import os
-from typing import Optional
 
 import keyring
 
 import lavlab
+
+# from typing import Optional
+
 
 LOGGER = logging.getLogger(__name__)  # TODO proper logger and logging
 

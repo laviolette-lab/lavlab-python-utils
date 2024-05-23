@@ -7,7 +7,7 @@ import bisect
 # import logging
 import os
 from enum import Enum
-from typing import Union, BinaryIO
+from typing import BinaryIO, Union
 
 import matplotlib.pyplot
 import nibabel as nib
@@ -54,8 +54,7 @@ def imread(image_path: Union[os.PathLike, BinaryIO]) -> np.ndarray:
     """
     if isinstance(image_path, BinaryIO):
         return pv.Image.new_from_buffer(image_path, "").numpy()
-    else:
-        return pv.Image.new_from_file(str(image_path)).numpy()
+    return pv.Image.new_from_file(str(image_path)).numpy()
 
 
 def niftiread(image_path: os.PathLike) -> np.ndarray:
@@ -258,15 +257,13 @@ def imresize(
         if isinstance(img, np.ndarray):
             pv_img = pv.Image.new_from_array(img)
             return imresize2d(pv_img, factor_tuple).numpy()
-        else:
-            return imresize2d(img, factor_tuple)
-    elif dimensions == 3:
+        return imresize2d(img, factor_tuple)
+    if dimensions == 3:
         assert isinstance(factor, tuple)
         return imresize3d(img, (factor[0], factor[1], factor[2]))
-    else:
-        raise ValueError(
-            "Unsupported image dimensions. Only 2D and 3D images are supported."
-        )
+    raise ValueError(
+        "Unsupported image dimensions. Only 2D and 3D images are supported."
+    )
 
 
 def imrotate(

@@ -1,7 +1,15 @@
+"""OMERO File utiltities"""
+
 import os
 from typing import Optional
-import lavlab
-from omero.gateway import ImageWrapper, FileAnnotationWrapper, BlitzGateway  # type: ignore
+
+from omero.gateway import (  # type: ignore
+    BlitzGateway,
+    FileAnnotationWrapper,
+    ImageWrapper,
+)
+
+# import lavlab
 
 
 def download_file_annotation(file_annot: FileAnnotationWrapper, outdir=".") -> str:
@@ -43,7 +51,7 @@ def get_script_by_name(
     fn: str
         Name of remote Omero.Script
     absolute: bool, Default: False
-        Absolute uses omero's getScriptID(). This method does not accept wildcards and requires a path.
+        Absolute uses getScriptID(). This method does not accept wildcards and requires a path.
         Default will get all remote script names and compare the remote filename to fn.
     checkUserScripts: bool, Default: False
         Not implemented.
@@ -93,8 +101,8 @@ def upload_file_as_annotation(
     conn = parent_obj._conn  # pylint: disable=W0212
 
     # if no mime provided try to parse from filename, if cannot, assume plaintext
-    if mime is None:
-        mime = lavlab.ctx.FILETYPE_CLASS.get_mimetype_from_path(file_path)
+    # if mime is None: #TODO finish this
+    #     mime = lavlab.ctx.FILETYPE_CLASS.get_mimetype_from_path(file_path)
 
     # if overwrite is true and an annotation already exists in this namespace, delete it
     if overwrite is True:
