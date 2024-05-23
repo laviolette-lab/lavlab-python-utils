@@ -13,7 +13,6 @@ from enum import Enum
 from importlib.metadata import entry_points
 from typing import Optional, Union
 
-import numpy as np
 import psutil  # type: ignore
 import yaml  # type: ignore
 
