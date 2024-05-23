@@ -16,11 +16,9 @@ ENV HATCH_ENV=default
 ENTRYPOINT ["hatch", "run"]
 
 FROM base AS dev
-USER vscode
 RUN pip3 install hatch ipykernel
-RUN pip3 install $(find requirements -name 'requirement*.txt' -exec echo -n '-r {} ' \;)
-
-# FROM base AS prod
-# COPY --from=dev /app/dist/*.whl /tmp
-# RUN pip3 install /tmp/*.whl
 USER vscode
+RUN find requirements -name 'requirement*.txt' | while read requirement; do \
+        pip3 install -r "$requirement"; \
+    done
+RUN pip3 install -r requirements.txt
