@@ -1,23 +1,26 @@
 # pylint: skip-file
 # type: ignore
 import os
-import numpy as np
 
-# from omero.gateway import ImageWrapper, BlitzGateway
+import numpy as np
 
 # Import functions from the file
 from lavlab.omero.images import (
-    get_plane_at_resolution_level,
     get_channels_at_resolution,
-    get_image_at_resolution_level,
     get_image_at_resolution,
+    get_image_at_resolution_level,
+    get_plane_at_resolution_level,
     pull_large_recon,
 )
+
+# from omero.gateway import ImageWrapper, BlitzGateway
 
 
 def test_get_plane_at_resolution_level(sample_image):
     # Call the get_plane_at_resolution_level function
-    result = get_plane_at_resolution_level(sample_image, res_lvl=0, z=0, c=0, t=0)
+    result = get_plane_at_resolution_level(
+        sample_image, res_lvl=0, z_idx=0, c_idx=0, t_idx=0
+    )
 
     # Verify the output
     assert isinstance(result, np.ndarray), "Expected result to be a NumPy array"
