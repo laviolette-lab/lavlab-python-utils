@@ -9,7 +9,7 @@ import scipy  # type: ignore
 from omero.gateway import BlitzGateway, ImageWrapper  # type: ignore
 from skimage import morphology
 
-from lavlab import imsuite, tissuemask
+from lavlab import imsuite, omero, tissuemask
 from lavlab.omero.helpers import (
     force_image_wrapper,
     force_rps,
@@ -24,8 +24,10 @@ from lavlab.omero.tiles import (
 )
 from lavlab.python_util import create_array
 
+LOGGER = omero.LOGGER.getChild("images")
 
-def get_plane_at_resolution_level(
+
+def get_plane_at_resolution_level(  # pylint: disable=R0913
     img: ImageWrapper,
     res_lvl: int,
     z_idx: int,
@@ -63,19 +65,18 @@ def get_plane_at_resolution_level(
 
     arr = None
     plane_size = size_x * size_y
-    # TODO use context
-    max_bytes = (
-        int(img._conn.getProperty("Ice.MessageSizeMax")) * 1000  # pylint: disable=W0212
-    )
 
-    if plane_size * 8 > max_bytes:
+    # if plane too big for getPlane, we need to gather tiles
+    if plane_size * 8 > int(
+        img._conn.getProperty("Ice.MessageSizeMax") * 1000  # pylint: disable=W0212
+    ):
         arr = create_array((size_y, size_x), np.uint8)
         tiles = create_full_tile_list(
             [z_idx], [c_idx], [t_idx], size_x, size_y, rps.getTileSize()
         )
         for tile, (_, _, _, coord) in get_tiles(img, tiles, res_lvl):
             arr[coord[1] : coord[1] + coord[3], coord[0] : coord[0] + coord[2]] = tile
-    else:
+    else:  # else just getPlane (probably don't need to worry about OOM)
         arr = np.frombuffer(rps.getPlane(z_idx, c_idx, t_idx), dtype=np.uint8).reshape(
             (size_y, size_x)
         )
@@ -221,7 +222,6 @@ def pull_large_recon(
     return imsuite.imwrite(arr, filename, **write_args)
 
 
-# TODO this needs some reworking
 def mask_omero_tissue_loosely(img_obj: ImageWrapper, mpp=728) -> np.ndarray:
     """Generates a loose tissue mask for a given OMERO object.
 
@@ -264,7 +264,7 @@ def mask_omero_tissue_loosely(img_obj: ImageWrapper, mpp=728) -> np.ndarray:
     return ~mask
 
 
-def load_image_smart(img: ImageWrapper):
+def load_image_smart(img: ImageWrapper):  # pylint: disable=R0912,R0914
     """
     Attempts to only request tiles with tissue, with the rest being filled in by white space.
     """

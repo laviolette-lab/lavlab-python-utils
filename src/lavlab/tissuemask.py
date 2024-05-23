@@ -1,7 +1,6 @@
 """Methods of masking tissue and background.
 Adapted from tiatoolbox.tools.tissuemask, replaced cv2 with skimage"""
 
-# TODO WIP
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
@@ -11,7 +10,9 @@ import numpy as np
 from skimage import measure, morphology
 from skimage.filters import threshold_otsu  # pylint: disable=E0611
 
-from lavlab import imsuite
+from lavlab import imsuite, omero
+
+LOGGER = omero.LOGGER.getChild("tissuemask")
 
 
 @np.vectorize
@@ -124,6 +125,7 @@ class OtsuTissueMasker(TissueMasker):
 
     def __init__(self: OtsuTissueMasker) -> None:
         """Initialize :class:`OtsuTissueMasker`."""
+        LOGGER.debug("using Otsu's method for thresholding")
         self.threshold: float | None
         self.fitted: bool
         self.threshold = None
@@ -263,6 +265,7 @@ class MorphologicalMasker(OtsuTissueMasker):
                 Defaults to area of the kernel.
         """
         super().__init__()
+        LOGGER.debug("using morphological operations for tissue masking")
 
         self.min_region_size = min_region_size
         self.threshold = None

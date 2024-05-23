@@ -12,7 +12,7 @@ import lavlab
 from lavlab.python_util import interlace_lists
 
 
-def get_tiles(
+def get_tiles(  # pylint: disable=R0914
     img: omero.gateway.Image,
     tiles: list[tuple[int, int, int, tuple[int, int, int, int]]],
     res_lvl: Optional[int] = None,
@@ -45,7 +45,6 @@ def get_tiles(
         if conn is None:
             conn = img._conn  # pylint: disable=W0212
         local = threading.local()
-        pix_id = img.getPrimaryPixels().getId()
 
         def work(pix_id, zct, coord, res_lvl, rps_bypass):
             """runs inside a threadpool to get multiple tiles at a time"""
@@ -66,7 +65,14 @@ def get_tiles(
                 delattr(local, "rps")
 
         futures = [
-            tpe.submit(work, pix_id, (z, c, t), coord, res_lvl, rps_bypass)  # type: ignore
+            tpe.submit(
+                work,
+                img.getPrimaryPixels().getId(),
+                (z, c, t),
+                coord,
+                res_lvl,
+                rps_bypass,
+            )
             for z, c, t, coord in tiles
         ]
         try:
@@ -85,7 +91,7 @@ def get_tiles(
                 future.result()
 
 
-def create_tile_list_2d(
+def create_tile_list_2d(  # pylint: disable=R0913
     z: int,
     c: int,
     t: int,
@@ -134,9 +140,9 @@ def create_tile_list_2d(
     return tile_list
 
 
-def create_full_tile_list(
+def create_full_tile_list(  # pylint: disable=R0913
     z_indexes: list[int],
-    channels: list[int],  # pylint: disable=R0913
+    channels: list[int],
     timepoints: list[int],
     width: int,
     height: int,

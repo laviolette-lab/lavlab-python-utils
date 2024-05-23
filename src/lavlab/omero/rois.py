@@ -37,8 +37,7 @@ def get_rois(img: ImageWrapper, roi_service=None) -> RoiWrapper:
     return rois
 
 
-# TODO performance rework
-def get_shapes_as_points(
+def get_shapes_as_points(  # pylint: disable=R0914
     img: ImageWrapper, point_downsample=4, img_downsample=1, roi_service=None
 ) -> list[tuple[int, tuple[int, int, int], list[tuple[float, float]]]]:
     """
@@ -150,7 +149,6 @@ def create_roi(img: ImageWrapper, shapes: list[ShapeWrapper]):
     return roi
 
 
-# TODO SLOW AND broken for rgb = 0,0,0 annotations
 # def getShapesAsMasks(img: ImageWrapper, downsample: int, bool_mask=True,
 #                      point_downsample=4, roi_service=None) -> list[np.ndarray]:
 #     """

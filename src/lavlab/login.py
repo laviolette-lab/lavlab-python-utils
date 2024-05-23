@@ -2,17 +2,14 @@
 
 import getpass
 import json
-import logging
 import os
+from typing import Union
 
 import keyring
 
 import lavlab
 
-# from typing import Optional
-
-
-LOGGER = logging.getLogger(__name__)  # TODO proper logger and logging
+LOGGER = lavlab.LOGGER.getChild("login")  # type: ignore
 
 
 class KeychainCredentialsProvider:
@@ -30,7 +27,22 @@ class KeychainCredentialsProvider:
             )
             self.store_credentials = False
 
-    def _prompt_for_credentials(self, username=None) -> dict[str, str]:
+    def prompt_for_credentials(
+        self, username: Union[str, None] = None
+    ) -> dict[str, str]:
+        """
+        prompts a user for credentials, using input for username and getpass for password entry.
+
+        Parameters
+        ----------
+        username : str, optional
+            username for a given credential set, by default None
+
+        Returns
+        -------
+        dict[str, str]
+            username, password dictionary
+        """
         if username is None:
             username = input("Enter username: ")
         password = getpass.getpass("Enter password: ")
@@ -78,13 +90,13 @@ class KeychainCredentialsProvider:
 
         # If interactive, prompt for clarification
         if lavlab.ctx.noninteractive is not True:
-            print("Unable to load credentials automatically, prompting user.")
+            LOGGER.warning("Unable to load credentials automatically, prompting user.")
             new_username = input(f"Enter username [{unix_username}]: ") or unix_username
             for cred in credentials:
                 if cred["username"] == new_username:
                     return cred["username"], cred["password"]
             # New credential set
-            new_credentials = self._prompt_for_credentials(new_username)
+            new_credentials = self.prompt_for_credentials(new_username)
             credentials.append(new_credentials)
             keyring.set_password(self._service, "credentials", json.dumps(credentials))
             return new_credentials["username"], new_credentials["password"]
@@ -93,7 +105,7 @@ class KeychainCredentialsProvider:
         raise RuntimeError("Unable to determine credentials in non-interactive mode.")
 
 
-class AbstractServiceProvider:
+class AbstractServiceProvider:  # pylint: disable=too-few-public-methods
     """Abstract service provider. Uses a credential provider to login to a service
     Expected to be inherited by service-specific provider.
     """

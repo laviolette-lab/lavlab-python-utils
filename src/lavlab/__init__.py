@@ -16,6 +16,10 @@ from typing import Optional, Union
 import psutil  # type: ignore
 import yaml  # type: ignore
 
+from lavlab.login import AbstractServiceProvider
+
+LOGGER = logging.getLogger(__name__)
+
 
 def assure_multiplication_string_is_int(string: str) -> int:
     """Converts a string with a multiplication operator into an integer."""
@@ -35,7 +39,7 @@ class ServiceProviderFactory:
     entries = entry_points(group="lavlab-python-utils.service_providers")
 
     @staticmethod
-    def create_service_provider(service_name: str, **kwargs):
+    def create_service_provider(service_name: str, **kwargs) -> AbstractServiceProvider:
         """
         Creates service provider based off registered entry points.
 
@@ -62,59 +66,112 @@ class ServiceProviderFactory:
             return provider_class(**kwargs)
         raise ValueError(f"No service provider available for {service_name}")
 
-
-FILETYPE_MAP = {
-    ".tif": "image/tiff",
-    ".tiff": "image/tiff",
-    ".jpeg": "image/jpeg",
-    ".jpg": "image/jpeg",
-    ".png": "image/png",
-    ".svg": "image/svg+xml",
-    ".ndpi": "image/vnd.hamamatsu.ndpi",
-    ".svs": "image/vnd.aperio.svs",
-    ".bif": "image/vnd.leica.bif",
-    ".dicom": "application/dicom",
-    ".dcm": "application/dicom",
-    ".nii": "application/nifti",
-    ".gz": "application/x-gzip",
-    ".csv": "text/csv",
-    ".txt": "text/plain",
-    ".xml": "application/xml",
-    ".json": "application/json",
-}
+    @staticmethod
+    def log_installed_providers():
+        """Logs the installed service providers."""
+        LOGGER.debug("Installed Service Providers: %s", ServiceProviderFactory.entries)
 
 
-def get_mimetype(file_extension: str) -> str:
-    """
-    Retrieve the MIME type based on the file extension.
-
-    Parameters
-    ----------
-    file_extension : str
-        The extension of the file (including the period).
-
-    Returns
-    -------
-    str
-        The MIME type of the file. Defaults to 'application/octet-stream' if unknown.
-    """
-    return FILETYPE_MAP.get(file_extension.lower(), "application/octet-stream")
+ServiceProviderFactory.log_installed_providers()
 
 
-def get_mimetype_from_path(file_path: str) -> str:
-    """Wrapper for get_mimetype, just splits the file extension off a path.
+class FileTypeEnum(Enum):
+    """Enum for file types and their MIME types."""
 
-    Parameters
-    ----------
-    file_path : str
-        Posix path.
+    TIFF = {
+        "extensions": [".tif", ".tiff"],
+        "mimetype": "image/tiff",
+    }
+    JPEG = {
+        "extensions": [".jpeg", ".jpg"],
+        "mimetype": "image/jpeg",
+    }
+    PNG = {
+        "extensions": [".png"],
+        "mimetype": "image/png",
+    }
+    SVG = {
+        "extensions": [".svg"],
+        "mimetype": "image/svg+xml",
+    }
+    NDPI = {
+        "extensions": [".ndpi"],
+        "mimetype": "image/vnd.hamamatsu.ndpi",
+    }
+    SVS = {
+        "extensions": [".svs"],
+        "mimetype": "image/vnd.aperio.svs",
+    }
+    BIF = {
+        "extensions": [".bif"],
+        "mimetype": "image/vnd.leica.bif",
+    }
+    DICOM = {
+        "extensions": [".dicom", ".dcm"],
+        "mimetype": "application/dicom",
+    }
+    NII = {
+        "extensions": [".nii"],
+        "mimetype": "application/nifti",
+    }
+    GZ = {
+        "extensions": [".gz"],
+        "mimetype": "application/x-gzip",
+    }
+    CSV = {
+        "extensions": [".csv"],
+        "mimetype": "text/csv",
+    }
+    TXT = {
+        "extensions": [".txt"],
+        "mimetype": "text/plain",
+    }
+    XML = {
+        "extensions": [".xml"],
+        "mimetype": "application/xml",
+    }
+    JSON = {
+        "extensions": [".json"],
+        "mimetype": "application/json",
+    }
 
-    Returns
-    -------
-    str
-        Mimetype string from enum.
-    """
-    return get_mimetype(f'.{file_path.split(".")[-1]}')
+    @staticmethod
+    def get_mimetype(file_extension: str) -> str:
+        """
+        Retrieve the MIME type based on the file extension.
+
+        Parameters
+        ----------
+        file_extension : str
+            The extension of the file (including the period).
+
+        Returns
+        -------
+        str
+            The MIME type of the file. Defaults to 'application/octet-stream' if unknown.
+        """
+        if not file_extension.startswith("."):
+            file_extension = f".{file_extension}"
+        for file_type in FileTypeEnum:
+            if file_extension.lower() in file_type.value["extensions"]:
+                return str(file_type.value["mimetype"])
+        return "application/octet-stream"
+
+    @staticmethod
+    def get_mimetype_from_path(file_path: str) -> str:
+        """Wrapper for get_mimetype, just splits the file extension off a path.
+
+        Parameters
+        ----------
+        file_path : str
+            Posix path.
+
+        Returns
+        -------
+        str
+            Mimetype string from enum.
+        """
+        return FileTypeEnum.get_mimetype(f'.{file_path.split(".")[-1]}')
 
 
 class DependencyThreadConfiguration(Enum):
@@ -149,9 +206,7 @@ class ResourceContext:
 
     DEP_THREAD_ENUM = DependencyThreadConfiguration
 
-    def __init__(self, config: dict, logger=None) -> None:
-        if logger is None:
-            self.logger = logging.getLogger(f"{__name__}.resources")
+    def __init__(self, config: dict) -> None:
         self._max_cores = config.get("max_cores", 1)
         self._memory_usage = config.get("memory_usage", 1)
         self._max_memory = assure_multiplication_string_is_int(
@@ -195,14 +250,14 @@ class ResourceContext:
     def max_cores(self, value: int) -> None:
         value = int(value)
         if value < 1 or value > psutil.cpu_count():
-            self.logger.error(
+            LOGGER.error(
                 "max_cores must be between 1 and your total cores! Changing max_cores to 1..."
             )
             value = 1
         self._max_cores = value
         for envvar in self.DEP_THREAD_ENUM:
             if self.DEP_THREAD_ENUM.is_module_imported(envvar.name.lower()):
-                self.logger.warning(
+                LOGGER.warning(
                     "Cannot set %s's concurrency after module has been imported.",
                     envvar.name.lower(),
                 )
@@ -221,7 +276,7 @@ class ResourceContext:
     def memory_usage(self, value: float) -> None:
         value = float(value)
         if value > 1 or value < 0:
-            self.logger.error(
+            LOGGER.error(
                 "memory_usage must be between 0 and 1! Changing memory_usage to 1..."
             )
             value = 1
@@ -237,7 +292,7 @@ class ResourceContext:
     def max_memory(self, value: int) -> None:
         value = int(value)
         if value < 1 or value > psutil.virtual_memory().total:
-            self.logger.error(
+            LOGGER.error(
                 "max_memory must be between 0 and your max! Changing max_memory to system max..."
             )
             value = psutil.virtual_memory().total
@@ -253,12 +308,12 @@ class ResourceContext:
     def io_max_threads(self, value: int) -> None:
         value = int(value)
         if value < 1:
-            self.logger.error(
+            LOGGER.error(
                 "io_max_threads must be 1 or more! Changing io_max_threads to 1..."
             )
             value = 1
         if value > 8:
-            self.logger.warning(
+            LOGGER.warning(
                 "i sincerely doubt you need all these io_max_threads, but go off queen"
             )
         self._io_max_threads = value
@@ -290,7 +345,7 @@ class ResourceContext:
 
     @io_pool.setter
     def io_pool(self, value: ThreadPoolExecutor) -> None:
-        self.logger.warning(
+        LOGGER.warning(
             "This isn't intented to be set like this, hope you know what you're doing!"
         )
         self._io_pool = value
@@ -306,25 +361,76 @@ class ResourceContext:
         self._max_temp_storage = value
 
 
-class HistologyContext:  # TODO proper setters and getters
-    """Provides configuration options for histology tools and services
-    Expected to be held in some kind of utilcontext
-    """
+class HistologyContext:
+    """Provides configuration options for histology tools and services"""
 
-    def __init__(self, config: dict, logger=None) -> None:
-        if logger is None:
-            self.logger = logging.getLogger(f"{__name__}.histology")
-        self.size_threshold = assure_multiplication_string_is_int(
+    def __init__(self, config: dict) -> None:
+        self._size_threshold = assure_multiplication_string_is_int(
             config.get("size_threshold", -1)
         )
-        self.service = config.get("service", {})
-        self.use_fast_compression = config.get("use_fast_compression", True)
-        self.fast_compression_options = config.get("fast_compression_options", {})
-        self.slow_compression_options = config.get("slow_compression_options", {})
-        self.tiling_options = config.get("tiling_options", {})
-        self.service_provider = None
+        self._service = config.get("service", {})
+        self._use_fast_compression = config.get("use_fast_compression", True)
+        self._fast_compression_options = config.get("fast_compression_options", {})
+        self._slow_compression_options = config.get("slow_compression_options", {})
+        self._tiling_options = config.get("tiling_options", {})
+        self._service_provider: Optional[AbstractServiceProvider] = None
 
-    def get_service_provider(self):
+    @property
+    def size_threshold(self) -> int:
+        """Get the size threshold."""
+        return self._size_threshold
+
+    @size_threshold.setter
+    def size_threshold(self, value: int) -> None:
+        self._size_threshold = value
+
+    @property
+    def service(self) -> dict:
+        """Get the service."""
+        return self._service
+
+    @service.setter
+    def service(self, value: dict) -> None:
+        self._service = value
+
+    @property
+    def use_fast_compression(self) -> bool:
+        """Get the use fast compression flag."""
+        return self._use_fast_compression
+
+    @use_fast_compression.setter
+    def use_fast_compression(self, value: bool) -> None:
+        self._use_fast_compression = value
+
+    @property
+    def fast_compression_options(self) -> dict:
+        """Get the fast compression options."""
+        return self._fast_compression_options
+
+    @fast_compression_options.setter
+    def fast_compression_options(self, value: dict) -> None:
+        self._fast_compression_options = value
+
+    @property
+    def slow_compression_options(self) -> dict:
+        """Get the slow compression options."""
+        return self._slow_compression_options
+
+    @slow_compression_options.setter
+    def slow_compression_options(self, value: dict) -> None:
+        self._slow_compression_options = value
+
+    @property
+    def tiling_options(self) -> dict:
+        """Get the tiling options."""
+        return self._tiling_options
+
+    @tiling_options.setter
+    def tiling_options(self, value: dict) -> None:
+        self._tiling_options = value
+
+    @property
+    def service_provider(self) -> AbstractServiceProvider:
         """
         Uses the ServiceProviderFactory to create a service provider based on the configuration.
 
@@ -333,12 +439,23 @@ class HistologyContext:  # TODO proper setters and getters
         ServiceProvider
             Implementation of the service provider.
         """
-        if self.service_provider is None:
+        if self._service_provider is None:
             kwargs = self.service
-            self.service_provider = ServiceProviderFactory.create_service_provider(
+            self._service_provider = ServiceProviderFactory.create_service_provider(
                 kwargs.pop("name"), **kwargs
             )
-        return self.service_provider
+        return self._service_provider
+
+    @service_provider.setter
+    def service_provider(self, value) -> None:
+        """Set the service provider."""
+        self._service_provider = value
+
+    def get_compression_settings(self) -> dict:
+        """Get the compression settings."""
+        if self.use_fast_compression:
+            return self.fast_compression_options
+        return self.slow_compression_options
 
 
 class ConfigCompiler:
@@ -368,24 +485,38 @@ class ConfigCompiler:
             dictionary containing the compiled configuration.
         """
         default_config = ConfigCompiler.load_default_config()
+        LOGGER.debug("Default Config: %s", default_config)
+
         # override defaults with kwargs, primarily for tests
         default_config = ConfigCompiler._merge_configs(default_config, kwargs)
+        LOGGER.debug("Config after kwarg overrides: %s", default_config)
+
+        # Read system config
         system_config_file = os.path.expanduser(default_config["default_system_file"])
         system_config = ConfigCompiler._read_yaml_config(system_config_file)
+        LOGGER.debug("System Config: %s", system_config)
 
         # Read user config
         user_config_file = os.path.expanduser(default_config["default_user_file"])
         user_config = ConfigCompiler._read_yaml_config(user_config_file)
+        LOGGER.debug("User Config: %s", user_config)
 
         # Merge configs: default < system < user
         merged_config = ConfigCompiler._merge_configs(default_config, system_config)
+        LOGGER.debug("Config after merging system config: %s", merged_config)
+
         merged_config = ConfigCompiler._merge_configs(merged_config, user_config)
+        LOGGER.debug("Config after merging user config: %s", merged_config)
 
         # Override with environment variables if available
         merged_config = ConfigCompiler._override_with_env_vars(merged_config)
+        LOGGER.debug(
+            "Config after overriding with environment variables: %s", merged_config
+        )
 
         # Set dynamic values
         final_config = ConfigCompiler._set_dynamic_values(merged_config)
+        LOGGER.info("Final Config: %s", final_config)
 
         return final_config
 
@@ -435,11 +566,10 @@ class ConfigCompiler:
 
     @staticmethod
     def _override_with_env_vars(config):
-        # TODO environment configuration overrides, add docstrings and typing
-        # You can add logic here to override specific config values with environment variables
-        # For example:
-        # if "MY_APP_LOG_LEVEL" in os.environ:
-        #     config["log_level"] = os.environ["MY_APP_LOG_LEVEL"]
+        """Override config values with environment variables if they exist."""
+        LOGGER.info(
+            "Overriding config with environment variables is not yet implemented."
+        )
         return config
 
     @staticmethod
@@ -469,16 +599,12 @@ class UtilContext:
 
     HISTOLOGY_CLASS = HistologyContext
     RESOURCE_CLASS = ResourceContext
-    # FILETYPE_CLASS = FiletypeEnum
+    FILETYPE_ENUM = FileTypeEnum
 
-    def __init__(self, logger=None, **kwargs):
-        if logger is None:
-            self.logger = logging.getLogger(f"{__name__}.histology")
-
+    def __init__(self, **kwargs):
         config = ConfigCompiler.compile(**kwargs)
 
         self.temp_dir = config.get("temp_dir")
-        self.log_level = config.get("log_level")
         self.noninteractive = config.get("noninteractive")
         self.histology = self.HISTOLOGY_CLASS(config.get("histology"))
         self.resources = self.RESOURCE_CLASS(config.get("resources"))
@@ -494,17 +620,7 @@ class UtilContext:
         ]
         summary.append(self.resources.context_summary())
 
-        self.logger.info(summary)
-
-    @property
-    def log_level(self):
-        """Logging level for the application."""
-        return self._log_level
-
-    @log_level.setter
-    def log_level(self, value):
-        self._log_level = value
-        self.logger.setLevel(value)
+        LOGGER.info(summary)
 
     @property
     def temp_dir(self):
@@ -524,63 +640,5 @@ class UtilContext:
     def noninteractive(self, value):
         self._noninteractive = bool(value)
 
-
-# class UtilContext:
-#     """Provides the base for configuring the LavLab Python Utilities
-#     Expected to be extended through a child class, see LavLabContext
-#     """
-#     # Static class variables
-#     HISTOLOGY_CLASS = HistologyContext
-#     RESOURCE_CLASS = ResourceContext
-#     FILETYPE_CLASS = FiletypeEnum
-#     logger = logging.getLogger(f"{__name__}.UtilContext")
-
-#     _temp_dir = "/default/temp/dir"
-#     _log_level = logging.INFO
-#     _noninteractive = False
-#     _histology = HISTOLOGY_CLASS()
-#     _resources = RESOURCE_CLASS()
-
-#     @classmethod
-#     def initialize(cls, **kwargs):
-#         cls._temp_dir = kwargs.get("temp_dir", cls._temp_dir)
-#         cls._log_level = kwargs.get("log_level", cls._log_level)
-#         cls._noninteractive = kwargs.get("noninteractive", cls._noninteractive)
-#         cls._histology = cls.HISTOLOGY_CLASS(kwargs.get("histology", {}))
-#         cls._resources = cls.RESOURCE_CLASS(kwargs.get("resources", {}))
-#         cls.log_context_summary()
-
-#     @classmethod
-#     def log_context_summary(cls):
-#         """Log summary information about the hardware configurations in use."""
-#         os_info = platform.uname()
-#         summary = [
-#             f"=== Utility Context Summary ===\n"
-#             f"Operating System: {os_info.system} {os_info.release} ({os_info.version})\n"
-#             f"Temp Directory: {cls._temp_dir}\n"
-#         ]
-#         summary.append(cls._resources.context_summary())
-#         cls.logger.info("\n".join(summary))
-
-#     @classmethod
-#     def set_log_level(cls, value):
-#         cls._log_level = value
-#         cls.logger.setLevel(value)
-
-#     @classmethod
-#     def set_temp_dir(cls, value):
-#         cls._temp_dir = value
-
-#     @classmethod
-#     def set_noninteractive(cls, value):
-#         cls._noninteractive = bool(value)
-
-
-# UtilContext.initialize(temp_dir="/path/to/temp", log_level=logging.DEBUG, noninteractive=True)
-
-
-# class LavLabContext(UtilContext):  # TODO finish lavlab context
-# def __init__(self, logger=None, **kwargs):
-#     super().__init__(logger, **kwargs)
 
 ctx = UtilContext()

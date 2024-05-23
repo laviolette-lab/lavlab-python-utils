@@ -9,7 +9,9 @@ from omero.gateway import (  # type: ignore
     ImageWrapper,
 )
 
-# import lavlab
+import lavlab.omero
+
+LOGGER = lavlab.omero.LOGGER.getChild("files")
 
 
 def download_file_annotation(file_annot: FileAnnotationWrapper, outdir=".") -> str:
@@ -37,7 +39,6 @@ def download_file_annotation(file_annot: FileAnnotationWrapper, outdir=".") -> s
     return path
 
 
-# TODO checkUserScripts
 def get_script_by_name(
     conn: BlitzGateway, fn: str, absolute=False, check_user_scripts=False
 ) -> int:
@@ -62,7 +63,9 @@ def get_script_by_name(
         Omero.Script Id
     """
     if check_user_scripts:
-        print("getScriptByName not fully implemented! May cause unexpected results!")
+        LOGGER.warning(
+            "getScriptByName not fully implemented! May cause unexpected results!"
+        )
     script_svc = conn.getScriptService()
     try:
         if absolute is True:
@@ -101,8 +104,8 @@ def upload_file_as_annotation(
     conn = parent_obj._conn  # pylint: disable=W0212
 
     # if no mime provided try to parse from filename, if cannot, assume plaintext
-    # if mime is None: #TODO finish this
-    #     mime = lavlab.ctx.FILETYPE_CLASS.get_mimetype_from_path(file_path)
+    if mime is None:
+        mime = lavlab.ctx.FILETYPE_ENUM.get_mimetype_from_path(file_path)
 
     # if overwrite is true and an annotation already exists in this namespace, delete it
     if overwrite is True:

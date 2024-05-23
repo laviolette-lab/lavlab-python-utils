@@ -10,7 +10,9 @@ from omero.gateway import (  # type: ignore
     ProxyObjectWrapper,
 )
 
-from lavlab.omero import LOGGER
+import lavlab.omero
+
+LOGGER = lavlab.omero.LOGGER.getChild("helpers")
 
 ## GROUP CONTEXT HELPERS
 

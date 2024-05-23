@@ -19,6 +19,11 @@ import scipy  # type: ignore
 import scipy.ndimage  # type: ignore
 import skimage
 
+import lavlab
+from lavlab.python_util import is_memsafe_pvimg
+
+LOGGER = lavlab.LOGGER.getChild("imsuite")
+
 
 class EdgeDetectionMethods(Enum):
     """List of available edge detection methods"""
@@ -32,8 +37,7 @@ class EdgeDetectionMethods(Enum):
 #
 ## imsuite
 #
-# TODO check memory to avoid oom, maybe try to use proper reader depending on input?
-def imread(image_path: Union[os.PathLike, BinaryIO]) -> np.ndarray:
+def imread(image_path: Union[os.PathLike, BinaryIO, str], wild=False) -> np.ndarray:
     """
     Loads an image from a file.
 
@@ -41,6 +45,8 @@ def imread(image_path: Union[os.PathLike, BinaryIO]) -> np.ndarray:
     ----------
     image_path : Union[os.PathLike, BinaryIO]
         Path to image.
+    wild : bool, optional
+        If True, will not warn about niche formats, by default False.
 
     Returns
     -------
@@ -54,15 +60,40 @@ def imread(image_path: Union[os.PathLike, BinaryIO]) -> np.ndarray:
     """
     if isinstance(image_path, BinaryIO):
         return pv.Image.new_from_buffer(image_path, "").numpy()
-    return pv.Image.new_from_file(str(image_path)).numpy()
+    image_path = str(image_path)
+    if image_path.endswith(".nii") or image_path.endswith(".nii.gz"):
+        if not wild:
+            LOGGER.warning(
+                "Nifti detected, use niftiread() for clarity if possible otherwise enable wild. Using niftiread..."  # pylint: disable=line-too-long
+            )
+        return niftiread(image_path)
+    if image_path.endswith(".dcm"):
+        if not wild:
+            LOGGER.warning(
+                "Dicom detected, use dicomread() for clarity if possible otherwise enable wild. Using dicomread..."  # pylint: disable=line-too-long
+            )
+        return dicomread(image_path)
+    if os.path.isdir(image_path):
+        if not wild:
+            LOGGER.warning(
+                "Dicom directory detected, use dicomread_volume() for clarity if possible otherwise enable wild. Using dicomread_volume"  # pylint: disable=line-too-long
+            )
+        return dicomread_volume(image_path)
+
+    img = pv.Image.new_from_file(str(image_path))
+    assert isinstance(img, pv.Image)
+    if not is_memsafe_pvimg(img):
+        LOGGER.warning("Image is too large for memory! Use wsiread() for large images.")
+        return wsiread(image_path)
+    return img.numpy()
 
 
-def niftiread(image_path: os.PathLike) -> np.ndarray:
+def niftiread(image_path: Union[os.PathLike, str]) -> np.ndarray:
     """Loads a nifti from a file.
 
     Parameters
     ----------
-    image_path : os.PathLike
+    image_path : os.PathLike or string representing a file
         Path to nifti.
 
     Returns
@@ -70,15 +101,15 @@ def niftiread(image_path: os.PathLike) -> np.ndarray:
     np.ndarray
         Array of pixel values.
     """
-    return nib.load(image_path).get_fdata()  # type: ignore
+    return nib.load(str(image_path)).get_fdata()  # type: ignore
 
 
-def dicomread(image_path: os.PathLike) -> np.ndarray:
+def dicomread(image_path: Union[os.PathLike, str]) -> np.ndarray:
     """Reads a dicom from a file.
 
     Parameters
     ----------
-    image_path : os.PathLike
+    image_path : os.PathLike or string representing a file
         Path to a dicom file.
 
     Returns
@@ -89,12 +120,14 @@ def dicomread(image_path: os.PathLike) -> np.ndarray:
     return pydicom.dcmread(image_path).pixel_array
 
 
-def dicomread_volume(dicom_dir: os.PathLike, file_extension=".dcm") -> np.ndarray:
+def dicomread_volume(
+    dicom_dir: Union[os.PathLike, str], file_extension=".dcm"
+) -> np.ndarray:
     """Reads a dicom series from a directory.
 
     Parameters
     ----------
-    dicom_dir : os.PathLike
+    dicom_dir : os.PathLike or string representing a directory
         Directory with the dicoms.
 
     Returns
@@ -130,7 +163,7 @@ def dicomread_volume(dicom_dir: os.PathLike, file_extension=".dcm") -> np.ndarra
     return volume
 
 
-def wsiread(image_path: os.PathLike) -> pv.Image:
+def wsiread(image_path: Union[os.PathLike, str]) -> pv.Image:
     """Reads a Whole Slide Image from a file.
 
     Allows operations on images larger than memory.
@@ -144,7 +177,7 @@ def wsiread(image_path: os.PathLike) -> pv.Image:
 
     Parameters
     ----------
-    image_path : os.PathLike
+    image_path : os.PathLike or string representing a file
         Path to WSI.
 
     Returns
@@ -152,7 +185,7 @@ def wsiread(image_path: os.PathLike) -> pv.Image:
     pv.Image
         PyVips Image, see documentation for usage.
     """
-    return pv.Image.new_from_file(image_path)
+    return pv.Image.new_from_file(str(image_path))
 
 
 def imwrite(
@@ -176,7 +209,8 @@ def imwrite(
         assert isinstance(img, np.ndarray)
         img = pv.Image.new_from_array(img)
     assert isinstance(img, pv.Image)
-    img.write_to_file(path, **kwargs)
+    settings = kwargs if kwargs else lavlab.ctx.histology.get_compression_settings()
+    img.write_to_file(path, **settings)
     return path
 
 

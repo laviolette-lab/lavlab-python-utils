@@ -7,26 +7,10 @@ from omero.gateway import BlitzGateway  # type: ignore
 import lavlab
 from lavlab.login import AbstractServiceProvider
 
-try:
-    import idr  # type: ignore
-
-    class IDRServiceProvider(AbstractServiceProvider):
-        """
-        Provides a connection to the IDR using idr-py, primarily for testing purposes.
-        """
-
-        def login(self) -> BlitzGateway:
-            return idr.connection("idr.openmicroscopy.org", "public", "public")
-
-except ImportError:
-    pass
+LOGGER = lavlab.LOGGER.getChild("omero")
 
 
-LOGGER = logging.getLogger(__name__)
-
-
-# TODO service providers, forcing myself to wait until another update.
-class OmeroServiceProvider(AbstractServiceProvider):
+class OmeroServiceProvider(AbstractServiceProvider):  # pylint: disable=R0903
     """
     Provides a connection to a defined OMERO server using omero-py.
     """
@@ -67,7 +51,9 @@ def connect() -> BlitzGateway:
     BlitzGateway
         omero api gateway
     """
-    return lavlab.ctx.histology.get_service_provider().login()
+    if not lavlab.ctx.histology.service.get("service").upper() == "OMERO":
+        raise RuntimeError("Service is not OMERO.")
+    return lavlab.ctx.histology.service_provider.login()
 
 
 def set_omero_logging_level(level: str):

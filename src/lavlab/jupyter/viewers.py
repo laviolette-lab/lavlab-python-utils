@@ -8,7 +8,7 @@ from dash_slicer import VolumeSlicer  # type: ignore
 from dash_slicer.slicer import Slider, Store  # type: ignore
 
 
-class ImageSliceViewer3D:
+class ImageSliceViewer3D:  # pylint: disable=R0903
     """
     Allows thumbing through a given volume's slices interactively.
 

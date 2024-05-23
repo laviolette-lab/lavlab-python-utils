@@ -1,14 +1,19 @@
 """General Python Utilities"""
 
 from __future__ import annotations
-from itertools import zip_longest
+
 import asyncio
 import tempfile
+from itertools import zip_longest
 from math import ceil
 from typing import AsyncGenerator
+
 import numpy as np
+import pyvips as pv  # type: ignore
 
 import lavlab
+
+LOGGER = lavlab.LOGGER.getChild("python_util")
 
 
 def is_memsafe_array(shape: tuple[int, ...], dtype=np.float64) -> bool:
@@ -31,6 +36,44 @@ def is_memsafe_array(shape: tuple[int, ...], dtype=np.float64) -> bool:
     return size < lavlab.ctx.resources.max_memory
 
 
+def is_memsafe_pvimg(pv_img: pv.Image) -> bool:
+    """
+    Checks if a given pyvips image is too large for the memory constraints
+
+    Parameters
+    ----------
+    pv_img : pv.Image
+        pyvips image to check
+
+    Returns
+    -------
+    bool
+        True if the image is safe to create in memory, False if it will blow your pc up.
+    """
+    size = pv_img.width * pv_img.height * pv_img.bands * pv_img.format_size
+    return size < lavlab.ctx.resources.max_memory
+
+
+def is_storage_safe_img(shape: tuple[int, ...], dtype=np.float64) -> bool:
+    """
+    Checks if a desired array of given shape and datatype is too large for the storage constraints
+
+    Parameters
+    ----------
+    shape : tuple[int,...]
+        shape of the array
+    dtype : np.dtype, optional
+        datatype of given array, by default np.float64 for max safety
+
+    Returns
+    -------
+    bool
+        True if the array is safe to create in memory, False if it will blow your pc up.
+    """
+    size = np.prod(shape) * np.dtype(dtype).itemsize
+    return size < lavlab.ctx.resources.max_temp_storage
+
+
 def create_array(shape: tuple[int, ...], dtype=np.float64) -> np.ndarray:
     """
     Creates an in-memory array or a disk-based memmap array based on the available system memory.
@@ -49,8 +92,11 @@ def create_array(shape: tuple[int, ...], dtype=np.float64) -> np.ndarray:
     """
     if is_memsafe_array(shape, dtype):
         return np.zeros(shape, dtype)
-    # TODO use contextual tempdir
-    _, path = tempfile.mkstemp()
+    if not is_storage_safe_img(shape, dtype):
+        raise MemoryError(
+            f"Array of shape {shape} with dtype {dtype} is too large for storage."
+        )
+    path = tempfile.mkstemp(dir=lavlab.ctx.temp_dir)[1]
     return np.memmap(path, dtype=dtype, mode="w+", shape=shape)
 
 
