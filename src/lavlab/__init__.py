@@ -16,9 +16,9 @@ from typing import Optional, Union
 import psutil  # type: ignore
 import yaml  # type: ignore
 
-from lavlab.login import AbstractServiceProvider
-
 LOGGER = logging.getLogger(__name__)
+# need to import this after logger to avoid circular import
+from lavlab.login import AbstractServiceProvider  # pylint: disable=C0413
 
 
 def assure_multiplication_string_is_int(string: str) -> int:
