@@ -1,4 +1,4 @@
-# pylint: skip-file
+# pylint: skip-file disable=cyclic-import
 # type: ignore
 import os
 
@@ -7,10 +7,15 @@ import nibabel.testing as nibTest
 import numpy as np
 import pydicom
 import pyvips as pv
+from pydicom.data import get_testdata_file
+
 from lavlab.imsuite import (
+    apply_mask,
     dicomread,
     dicomread_volume,
+    draw_shapes,
     edge,
+    get_color_region_contours,
     imadjust,
     imcomplement,
     imcrop,
@@ -21,11 +26,7 @@ from lavlab.imsuite import (
     imwrite,
     niftiread,
     wsiread,
-    draw_shapes,
-    apply_mask,
-    get_color_region_contours,
 )
-from pydicom.data import get_testdata_file, get_testdata_files
 
 
 # TODO comprehensive testing, a lot of allowed permutations are untested and some do not actually test that the given function works, just that it doesn't error.
