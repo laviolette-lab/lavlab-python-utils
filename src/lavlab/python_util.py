@@ -50,7 +50,8 @@ def is_memsafe_pvimg(pv_img: pv.Image) -> bool:
     bool
         True if the image is safe to create in memory, False if it will blow your pc up.
     """
-    size = pv_img.width * pv_img.height * pv_img.bands * pv_img.format_size
+    # assume dtype is 64-bit float atm
+    size = pv_img.width * pv_img.height * pv_img.bands * 64
     return size < lavlab.ctx.resources.max_memory
 
 

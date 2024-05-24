@@ -67,9 +67,9 @@ def get_plane_at_resolution_level(  # pylint: disable=R0913
     plane_size = size_x * size_y
 
     # if plane too big for getPlane, we need to gather tiles
-    if plane_size * 8 > int(
-        img._conn.getProperty("Ice.MessageSizeMax") * 1000  # pylint: disable=W0212
-    ):
+    if (
+        plane_size * 8 > int(img._conn.getProperty("Ice.MessageSizeMax")) * 1000
+    ):  # pylint: disable=W0212
         arr = create_array((size_y, size_x), np.uint8)
         tiles = create_full_tile_list(
             [z_idx], [c_idx], [t_idx], size_x, size_y, rps.getTileSize()

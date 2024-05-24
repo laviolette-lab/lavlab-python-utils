@@ -589,6 +589,11 @@ class ConfigCompiler:
         if config["temp_dir"] is None:
             config["temp_dir"] = tempfile.gettempdir()
 
+        if config["resources"]["max_temp_storage"] is None:
+            config["resources"]["max_temp_storage"] = psutil.disk_usage(
+                config["temp_dir"]
+            ).free
+
         return config
 
 

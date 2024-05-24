@@ -209,7 +209,10 @@ def imwrite(
         assert isinstance(img, np.ndarray)
         img = pv.Image.new_from_array(img)
     assert isinstance(img, pv.Image)
-    settings = kwargs if kwargs else lavlab.ctx.histology.get_compression_settings()
+    # need to figure out default compression settings some day
+    settings = (
+        kwargs if kwargs else {}
+    )  # lavlab.ctx.histology.get_compression_settings()
     img.write_to_file(path, **settings)
     return path
 
