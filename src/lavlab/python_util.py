@@ -1,116 +1,107 @@
+"""General Python Utilities"""
+
 from __future__ import annotations
-"""
-Contains general utilities for lavlab's python scripts.
-"""
-import os
-import psutil
+
 import asyncio
 import tempfile
+from itertools import zip_longest
 from math import ceil
+from typing import AsyncGenerator
 
 import numpy as np
-import dask.array as da
+import pyvips as pv  # type: ignore
 
-from PIL import Image, ImageDraw
-from skimage import measure
+import lavlab
 
-#
-## Utility Dictionary
-#
-FILETYPE_DICTIONARY = {
-    "SKIMAGE_FORMATS": {
-        "JPEG": {"EXT": ".jpg", "MIME": "image/jpg"},
-        "TIFF": {"EXT": ".tif", "MIME": "image/tiff"},
-        "PNG": {"EXT": ".png", "MIME": "image/png"},
-    },
-    "MATLAB_FORMATS": {
-        "M": {"EXT": ".m", "MIME": "text/plain", "MATLAB_MIME": "application/matlab-m"},
-        "MAT": {
-            "EXT": ".mat",
-            "MIME": "application/octet-stream",
-            "MATLAB_MIME": "application/matlab-mat",
-        },
-    },
-    "GENERIC_FORMATS": {"TXT": {"EXT": ".txt", "MIME": "text/plain"}},
-}
-"""
-Contains file extensions and mimetypes for commonly used files.
-
-MATLAB_FORMATS has special key: MATLAB_MIME. MATLAB_MIME is a proprietary mimetype for MATLAB files. 
-Clients will need to know how to handle MATLAB_MIME. Unless you know you need the MATLAB_MIME, use the normal mimetype.
-
-```
-FILETYPE_DICTIONARY={ 
-    "SKIMAGE_FORMATS": {
-        "JPEG": {
-            "EXT": ".jpg",
-            "MIME": "image/jpg"
-        },
-        "TIFF": {
-            "EXT": ".tif",
-            "MIME": "image/tiff"
-        },
-        "PNG": {
-            "EXT": ".png",
-            "MIME": "image/png"
-        }
-    },
-    "MATLAB_FORMATS": {
-        "M":{
-            "EXT": ".m",
-            "MIME": "text/plain",
-            "MATLAB_MIME": "application/matlab-m"
-        },
-        "MAT":{
-            "EXT": ".mat",
-            "MIME": "application/octet-stream",
-            "MATLAB_MIME": "application/matlab-mat"
-        }
-    },
-    "GENERIC_FORMATS": {
-        "TXT":{
-            "EXT": ".txt",
-            "MIME": "text/plain"
-        }
-    }
-}
-```
-
-See Also
---------
-lavlab.omero_utils.OMERO_DICTIONARY : Dictionary for converting omero info into python equivalents.
-"""
+LOGGER = lavlab.LOGGER.getChild("python_util")
 
 
-#
-## Utility Dictionary Utilities
-#
-def lookup_filetype_by_name(file: str) -> tuple[str, str]:
+def is_memsafe_array(shape: tuple[int, ...], dtype=np.float64) -> bool:
     """
-    Searches dictionary for a matching filetype using the filename's extension.
+    Checks if a desired array of given shape and datatype is too large for the memory constraints
 
     Parameters
     ----------
-    file: str
-        Filename to lookup type of.
+    shape : tuple[int,...]
+        shape of the array
+    dtype : np.dtype, optional
+        datatype of given array, by default np.float64 for max safety
 
     Returns
     -------
-    tuple[str, str]
-        Returns filetype set (SKIMAGE, MATLAB, etc) and the filetype key (JPEG, MAT, etc)
+    bool
+        True if the array is safe to create in memory, False if it will blow your pc up.
     """
-    filename, f_ext = os.path.splitext(file)
-    for set in FILETYPE_DICTIONARY:
-        for format in FILETYPE_DICTIONARY[set]:
-            ext = FILETYPE_DICTIONARY[set][format]["EXT"]
-            if ext == f_ext:
-                return set, format
+    size = np.prod(shape) * np.dtype(dtype).itemsize
+    return size < lavlab.ctx.resources.max_memory
 
 
-#
-## Python Utilities
-#
-def chunkify(lst: list, n: int):
+def is_memsafe_pvimg(pv_img: pv.Image) -> bool:
+    """
+    Checks if a given pyvips image is too large for the memory constraints
+
+    Parameters
+    ----------
+    pv_img : pv.Image
+        pyvips image to check
+
+    Returns
+    -------
+    bool
+        True if the image is safe to create in memory, False if it will blow your pc up.
+    """
+    # assume dtype is 64-bit float atm
+    size = pv_img.width * pv_img.height * pv_img.bands * 64
+    return size < lavlab.ctx.resources.max_memory
+
+
+def is_storage_safe_img(shape: tuple[int, ...], dtype=np.float64) -> bool:
+    """
+    Checks if a desired array of given shape and datatype is too large for the storage constraints
+
+    Parameters
+    ----------
+    shape : tuple[int,...]
+        shape of the array
+    dtype : np.dtype, optional
+        datatype of given array, by default np.float64 for max safety
+
+    Returns
+    -------
+    bool
+        True if the array is safe to create in memory, False if it will blow your pc up.
+    """
+    size = np.prod(shape) * np.dtype(dtype).itemsize
+    return size < lavlab.ctx.resources.max_temp_storage
+
+
+def create_array(shape: tuple[int, ...], dtype=np.float64) -> np.ndarray:
+    """
+    Creates an in-memory array or a disk-based memmap array based on the available system memory.
+
+    Parameters
+    ----------
+    shape : tuple
+        Shape of the array.
+    dtype : np.dtype, Default: np.float64
+        Data-type of the array's elements.
+
+    Returns
+    -------
+    array
+        Numpy in-memory array or memmap array based on the available system memory.
+    """
+    if is_memsafe_array(shape, dtype):
+        return np.zeros(shape, dtype)
+    if not is_storage_safe_img(shape, dtype):
+        raise MemoryError(
+            f"Array of shape {shape} with dtype {dtype} is too large for storage."
+        )
+    path = tempfile.mkstemp(dir=lavlab.ctx.temp_dir)[1]
+    return np.memmap(path, dtype=dtype, mode="w+", shape=shape)
+
+
+def chunkify(lst: list, n: int) -> list[list]:
     """
     Breaks list into n chunks.
 
@@ -127,12 +118,10 @@ def chunkify(lst: list, n: int):
         lst split into n chunks.
     """
     size = ceil(len(lst) / n)
-    return list(
-        map(lambda x: lst[x * size:x * size + size],
-        list(range(n)))
-    )
+    return list(map(lambda x: lst[x * size : x * size + size], list(range(n))))
 
-def interlace_lists(*lists: list[list]) -> list:
+
+def interlace_lists(*lists: list) -> list:
     """
     Interlaces a list of lists. Useful for combining tileLists of different channels.
 
@@ -151,23 +140,15 @@ def interlace_lists(*lists: list[list]) -> list:
     >>> interlace_lists([1,3],[2,4])
     [1,2,3,4]
     """
-    # get length of new arr
-    length = 0
-    for list in lists:
-        length += len(list)
-
-    # build new array
-    arr = [None] * (length)
-    for i, list in enumerate(lists):
-        # slice index (put in every xth index)
-        arr[i :: len(lists)] = list
-    return arr
+    return [
+        val
+        for tup in zip_longest(*lists, fillvalue=None)
+        for val in tup
+        if val is not None
+    ]
 
 
-#
-## Async Python Utilities
-#
-def merge_async_iters(*aiters):
+def merge_async_iters(*a_iters) -> AsyncGenerator:
     """
     Merges async generators using a asyncio.Queue.
 
@@ -177,7 +158,7 @@ def merge_async_iters(*aiters):
 
     Parameters
     ----------
-    *aiters: AsyncGenerator
+    *a_iters: AsyncGenerator
         AsyncGenerators to merge
 
     Returns
@@ -185,16 +166,16 @@ def merge_async_iters(*aiters):
     AsyncGenerator
         Generator that calls all input generators
     """
-    queue = asyncio.Queue(1)
-    run_count = len(aiters)
+    queue = asyncio.Queue(1)  # type: ignore
+    run_count = len(a_iters)
     cancelling = False
 
-    async def drain(aiter):
+    async def drain(a_iter):
         nonlocal run_count
         try:
-            async for item in aiter:
+            async for item in a_iter:
                 await queue.put((False, item))
-        except Exception as e:
+        except IOError as e:
             if not cancelling:
                 await queue.put((True, e))
             else:
@@ -219,11 +200,11 @@ def merge_async_iters(*aiters):
         for t in tasks:
             t.cancel()
 
-    tasks = [asyncio.create_task(drain(aiter)) for aiter in aiters]
+    tasks = [asyncio.create_task(drain(a_iter)) for a_iter in a_iters]
     return merged()
 
 
-async def desync(it):
+async def desync(it) -> AsyncGenerator:
     """
     Turns sync iterable into an async iterable.
 
@@ -238,44 +219,6 @@ async def desync(it):
         asynchronously yields results from input iterable."""
     for x in it:
         yield x
-
-
-#
-## Image Array Utilities
-#
-
-def create_array(shape, dtype=np.float64, use_dask=False, chunksize=1e6):
-    """
-Creates a numpy array, a dask array or a memmap array based on the available system memory.
-
-Parameters
-----------
-dtype : np.dtype
-    Data-type of the array’s elements.
-shape : tuple
-    Shape of the array.
-chunksize : int, optional
-    Size of chunks for dask array, by default 1e6.
-use_dask : bool, optional
-    Whether to use dask arrays for large datasets. If False, memmap is used, by default False.
-
-Returns
--------
-array
-    Numpy array, Dask array or memmap array based on the available system memory.
-    """
-    size = np.prod(shape) * np.dtype(dtype).itemsize
-    free_memory = psutil.virtual_memory().available
-
-    if size < free_memory:
-        return np.zeros(shape, dtype)
-    else:
-        if use_dask:
-            chunks = tuple(max(1, x // chunksize) for x in shape)
-            return da.zeros(shape, dtype, chunks=chunks)
-        else:
-            _, path = tempfile.mkstemp()
-            return np.memmap(path, dtype=dtype, mode='w+', shape=shape)
 
 
 def rgba_to_uint(red: int, green: int, blue: int, alpha=255) -> int:
@@ -296,7 +239,8 @@ def rgba_to_uint(red: int, green: int, blue: int, alpha=255) -> int:
     Returns
     -------
     int
-        Integer encoding rgba value."""
+        Integer encoding rgba value.
+    """
     r = red << 24
     g = green << 16
     b = blue << 8
@@ -307,7 +251,7 @@ def rgba_to_uint(red: int, green: int, blue: int, alpha=255) -> int:
     return int(uint)
 
 
-def uint_to_rgba(uint: int) -> int:
+def uint_to_rgba(uint: int) -> tuple[int, int, int, int]:
     """
     Return the color as an Integer in RGBA encoding.
 
@@ -335,102 +279,3 @@ def uint_to_rgba(uint: int) -> int:
     alpha = uint & 0xFF
 
     return red, green, blue, alpha
-
-
-def draw_shapes(
-    input_img: Image.Image or np.ndarray,
-    shape_points: tuple[int, tuple[int, int, int], tuple[np.ndarray, np.ndarray]],
-) -> None:
-    """
-    Draws a list of shape points onto the input numpy array.
-
-    Warns
-    -------
-    NO SAFETY CHECKS! MAKE SURE input_img AND shape_points ARE FOR THE SAME DOWNSAMPLE FACTOR!
-
-    Parameters
-    ----------
-    input_img: np.ndarray
-        3 channel numpy array
-    shape_points: tuple(int, tuple(int,int,int), tuple(row, col))
-        Expected to use output from lavlab.omero_util.getShapesAsPoints
-
-    Returns
-    -------
-    ``None``
-    """
-    # need PIL image for processing
-    arr = None
-    if type(input_img) is np.ndarray:
-        arr = input_img
-        input_img = Image.fromarray(arr)
-
-    # use pil imagedraw
-    draw = ImageDraw.Draw(input_img)
-    for id, rgb, xy in shape_points:
-        draw.polygon(xy, fill=rgb)
-
-    # but need to save changes to numpy if that's the input
-    if arr is not None:
-        new_arr = np.array(input_img)
-        np.copyto(arr, new_arr, where=not None)
-
-
-def apply_mask(img_bin: np.ndarray or Image, mask_bin: np.ndarray, where=None):
-    """
-    Essentially an alias for np.where()
-
-    Notes
-    -----
-    DEPRECATED
-
-    Parameters
-    ----------
-    img_bin: np.ndarray or PIL.Image
-        Image as numpy array.
-    mask_bin: np.ndarray
-        Mask as numpy array.
-    where: conditional, optional
-        Passthrough for np.where conditional.
-
-    Returns
-    -------
-    tuple[np.ndarray, np.ndarray]
-        Where and where not arrays"""
-    if issubclass(type(img), Image.Image):
-        img = np.array(img)
-    if where is None:
-        where = mask_bin != 0
-    return np.where(where, mask_bin, img_bin)
-
-
-def get_color_region_contours(
-    img: np.ndarray or Image, rgb_val: tuple[int, int, int], axis=-1
-) -> np.ndarray:
-    """
-    Finds the contours of all areas with a given rgb value. Useful for finding drawn ROIs.
-
-    Parameters
-    ----------
-    img: np.ndarray or PIL.Image
-        Image with ROIs. Converts PIL Image to np array for processing.
-    rgb_val: tuple[int,int,int]
-        Red, Green, and Blue values for the roi color.
-    axis: int, Default: -1
-        Which axis is the color channel. Default is the last axis [:,:,color]
-
-    Returns
-    -------
-    list[ tuple[int(None), rgb_val, contours] ]
-        Returns list of lavlab shapes.
-    """
-    if issubclass(type(img), Image.Image):
-        img = np.array(img)
-    mask_bin = np.all(img == rgb_val, axis=axis)
-    contours = measure.find_contours(mask_bin, level=0.5)
-    del mask_bin
-    # wrap in lavlab shape convention
-    for i, contour in enumerate(contours):
-        contour = [(x, y) for y, x in contour]
-        contours[i] = (None, rgb_val, contour)
-    return contours

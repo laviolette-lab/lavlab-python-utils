@@ -1,33 +1,165 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
 [project]
 name = "lavlab-python-utils"
-description = "LaViolette Lab utility package"
-version = "1.2.3"
-
+dynamic = ["version"]
+description = 'LaViolette Lab utilities'
+readme = "README.md"
+requires-python = ">=3.8"
+license = "MIT"
+keywords = []
 authors = [
-  { name="Michael Barrett", email="mjbarrett@mcw.edu" },
+  { name = "barrettMCW", email = "mjbarrett@mcw.edu" },
 ]
-
-readme = "README.rst"
 classifiers = [
-    "Programming Language :: Python :: 3",
-    "License :: OSI Approved :: MIT License",
-    "Operating System :: OS Independent",
+  "Development Status :: 4 - Beta",
+  "Programming Language :: Python",
+  "Programming Language :: Python :: 3.8",
+  "Programming Language :: Python :: 3.9",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: Implementation :: CPython",
+  "Programming Language :: Python :: Implementation :: PyPy",
 ]
-
-requires-python = ">=3.7"
 dependencies = [
-  'dask',
-  'omero-py >= 5.13.1',
-  'tiatoolbox >= 1.4.0'
+  "psutil",
+  "pyyaml",
+  "pyvips",
+  "keyring",
+  "nibabel",
+  "pydicom",
+  "scikit-image",
+  "matplotlib"
 ]
 
 [project.optional-dependencies]
-docs = ["sphinx>=6.2.1","docutils >= 0.18.1"]
+omero = [
+  "zeroc-ice @ https://github.com/glencoesoftware/zeroc-ice-py-macos-universal2/releases/download/20240131/zeroc_ice-3.6.5-cp310-cp310-macosx_11_0_universal2.whl#sha256=6dfb8289c1004785e2a11cc32e8d1e9db84fbe173495d37c9ea46221e64abf56 ; python_version == '3.10' and platform_system == 'Darwin'",
+  "zeroc-ice @ https://github.com/glencoesoftware/zeroc-ice-py-macos-universal2/releases/download/20240131/zeroc_ice-3.6.5-cp311-cp311-macosx_11_0_universal2.whl#sha256=115f8e49a65960873fca105dfd949507fff8376177a4abd81dacbc53b039f838 ; python_version == '3.11' and platform_system == 'Darwin'",
+  "zeroc-ice @ https://github.com/glencoesoftware/zeroc-ice-py-macos-universal2/releases/download/20240131/zeroc_ice-3.6.5-cp312-cp312-macosx_11_0_universal2.whl#sha256=7b387fefd15acf05192464fccda4d5a5c37fddd15e8fb5cc509d787950b66e8a ; python_version == '3.12' and platform_system == 'Darwin'",
+  "zeroc-ice @ https://github.com/glencoesoftware/zeroc-ice-py-linux-x86_64/releases/download/20240202/zeroc_ice-3.6.5-cp38-cp38-manylinux_2_28_x86_64.whl#sha256=7fb489530bc2ea3ee2bcf485c032e64e87669fc3811d5d0ae4e8b1172e488e47 ; python_version == '3.8' and platform_system == 'Linux'",
+  "zeroc-ice @ https://github.com/glencoesoftware/zeroc-ice-py-linux-x86_64/releases/download/20240202/zeroc_ice-3.6.5-cp39-cp39-manylinux_2_28_x86_64.whl#sha256=36d2f8448a45d253a4e2aed5c711e1be95b9d32f0afbe6ce42a2e12f04cbe821 ; python_version == '3.9' and platform_system == 'Linux'",
+  "zeroc-ice @ https://github.com/glencoesoftware/zeroc-ice-py-linux-x86_64/releases/download/20240202/zeroc_ice-3.6.5-cp310-cp310-manylinux_2_28_x86_64.whl#sha256=30511316787eca4cabf13804373884ec16b385afa8bf2e764c004ffc28f75dcf ; python_version == '3.10' and platform_system == 'Linux'",
+  "zeroc-ice @ https://github.com/glencoesoftware/zeroc-ice-py-linux-x86_64/releases/download/20240202/zeroc_ice-3.6.5-cp311-cp311-manylinux_2_28_x86_64.whl#sha256=9ca8e9374fbea996264d70098a74f6f1a9cad063921099edc9ab24fce0344b4c ; python_version == '3.11' and platform_system == 'Linux'",
+  "zeroc-ice @ https://github.com/glencoesoftware/zeroc-ice-py-linux-x86_64/releases/download/20240202/zeroc_ice-3.6.5-cp312-cp312-manylinux_2_28_x86_64.whl#sha256=96fb9066912c52f2503e9f9207f98d51de79c475d19ebd3157aae7bc522b5826 ; python_version == '3.12' and platform_system == 'Linux'",
+  "omero-py"
+]
+jupyter = [
+  "jupyter",
+  "dash-slicer",
+  "dash-bootstrap-components"
+]
+
+[project.entry-points."lavlab-python-utils.service_providers"]
+OMERO = "lavlab.omero:OmeroServiceProvider"
+IDR = "lavlab.omero:IDRServiceProvider"
 
 [project.urls]
-"Homepage" = "https://github.com/laviolette-lab/lavlab-python-utils"
-"Bug Tracker" = "https://github.com/laviolette-lab/lavlab-python-utils/issues"
+Documentation = "https://github.com/LavLabInfrastructure/lavlab-python-utils#readme"
+Issues = "https://github.com/LavLabInfrastructure/lavlab-python-utils/issues"
+Source = "https://github.com/LavLabInfrastructure/lavlab-python-utils"
 
-[build-system]
-build-backend = "setuptools.build_meta"
-requires = ["setuptools", "wheel"]
+[tool.hatch.version]
+path = "src/lavlab/__about__.py"
+
+[tool.hatch.metadata]
+allow-direct-references = true
+package-data = { "lavlab" = ["py.typed", "default.yaml"] }
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/lavlab"]
+
+[tool.hatch.env]
+requires = [
+    "hatch-pip-compile"
+]
+
+[tool.hatch.envs.default]
+type = "pip-compile"
+pip-compile-hashes = true
+dependencies = []
+
+[tool.hatch.envs.default.scripts]
+build = "hatch build && chmod -R 777 dist/*"
+
+[tool.hatch.envs.test]
+features = [ "omero", "jupyter" ]
+dependencies = [
+  "toml",
+  "pytest",
+  "pytest-cov",
+  "pytest-asyncio",
+  "coverage[toml]>=6.2",
+  "pydicom-data"
+]
+[tool.hatch.envs.test.scripts]
+test = "pytest {args:test}"
+cov = "pytest --cov=src --cov-report=term-missing {args:test}"
+
+[tool.hatch.envs.lint]
+features = [ "omero", "jupyter" ]
+dependencies = [
+  "toml",
+  "pytest",
+  "pylint",
+  "black"
+]
+[tool.hatch.envs.lint.scripts]
+lint = "pylint src test"
+format = "black src test"
+check = "black src test --check"
+
+[tool.hatch.envs.types]
+features = [ "omero", "jupyter" ]
+dependencies = [
+  "mypy>=1.0.0",
+]
+[tool.hatch.envs.types.scripts]
+check = "mypy --install-types --non-interactive {args:src/lavlab test}"
+
+[tool.hatch.envs.docs]
+features = [ "omero", "jupyter" ]
+dependencies = [
+  "mkdocs",
+  "mkdocstrings",
+  "mkdocs-material",
+  "mkdocs-autorefs",
+  "mkdocs-minify-plugin",
+  "mkdocs-material-extensions",
+  "mkdocs-git-revision-date-localized-plugin"
+]
+[tool.hatch.envs.docs.scripts]
+build-docs = "mkdocs build"
+serve-docs = "mkdocs serve"
+
+[[tool.hatch.envs.all.matrix]]
+python = ["3.8", "3.9", "3.10", "3.11", "3.12"]
+
+[tool.coverage.run]
+source_pkgs = ["lavlab", "test"]
+branch = true
+parallel = true
+omit = [
+  "src/lavlab/__about__.py",
+]
+
+[tool.coverage.paths]
+lavlab = ["src/lavlab", "*/lavlab-python-utils/src/lavlab"]
+test = ["test", "*/lavlab-python-utils/test"]
+
+[tool.coverage.report]
+exclude_lines = [
+  "no cov",
+  "if __name__ == .__main__.:",
+  "if TYPE_CHECKING:",
+]
+
+[tool.mypy.overrides]
+module = [
+    "omero",
+    "scipy"
+]
+ignore_missing_imports = true
