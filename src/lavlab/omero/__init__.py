@@ -51,7 +51,7 @@ def connect() -> BlitzGateway:
     BlitzGateway
         omero api gateway
     """
-    if not lavlab.ctx.histology.service.get("service").upper() == "OMERO":
+    if not lavlab.ctx.histology.service.get("name").upper() == "OMERO":
         raise RuntimeError("Service is not OMERO.")
     return lavlab.ctx.histology.service_provider.login()
 
