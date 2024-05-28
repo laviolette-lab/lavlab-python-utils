@@ -1,5 +1,4 @@
-"""Handles the configuration of our python modules
-"""
+"""Handles the configuration of our python modules"""
 
 import importlib.resources
 import logging
@@ -17,8 +16,6 @@ import psutil  # type: ignore
 import yaml  # type: ignore
 
 LOGGER = logging.getLogger(__name__)
-# need to import this after logger to avoid circular import
-from lavlab.login import AbstractServiceProvider  # pylint: disable=C0413
 
 
 def assure_multiplication_string_is_int(string: str) -> int:
@@ -39,7 +36,7 @@ class ServiceProviderFactory:
     entries = entry_points(group="lavlab-python-utils.service_providers")
 
     @staticmethod
-    def create_service_provider(service_name: str, **kwargs) -> AbstractServiceProvider:
+    def create_service_provider(service_name: str, **kwargs):
         """
         Creates service provider based off registered entry points.
 
@@ -373,7 +370,7 @@ class HistologyContext:
         self._fast_compression_options = config.get("fast_compression_options", {})
         self._slow_compression_options = config.get("slow_compression_options", {})
         self._tiling_options = config.get("tiling_options", {})
-        self._service_provider: Optional[AbstractServiceProvider] = None
+        self._service_provider = None
 
     @property
     def size_threshold(self) -> int:
@@ -430,7 +427,7 @@ class HistologyContext:
         self._tiling_options = value
 
     @property
-    def service_provider(self) -> AbstractServiceProvider:
+    def service_provider(self):
         """
         Uses the ServiceProviderFactory to create a service provider based on the configuration.
 
