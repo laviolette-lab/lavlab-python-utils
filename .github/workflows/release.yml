@@ -25,10 +25,14 @@ jobs:
     - name: Build wheel with Hatch
       run: hatch build
 
+    - name: Get wheel filename
+      id: get_wheel
+      run: echo "WHEEL_NAME=$(basename dist/*.whl)" >> $GITHUB_ENV
+
     - name: Upload Release Asset
       uses: actions/upload-release-asset@v1
       with:
         upload_url: ${{ github.event.release.upload_url }}
-        asset_path: dist/*.whl
-        asset_name: $(basename dist/*.whl)
+        asset_path: dist/${{ env.WHEEL_NAME }}
+        asset_name: ${{ env.WHEEL_NAME }}
         asset_content_type: application/zip
