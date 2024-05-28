@@ -5,11 +5,10 @@ on:
     types: [published]
 
 permissions:
-  contents: read
-  packages: write
+  contents: write  # Needed for uploading release assets
 
 jobs:
-  build-wheel:
+  build-and-upload-wheel:
     runs-on: ubuntu-latest
     steps:
     - name: Checkout repository
@@ -26,29 +25,10 @@ jobs:
     - name: Build wheel with Hatch
       run: hatch build
 
-    - name: Upload wheel artifact
-      uses: actions/upload-artifact@v3
-      with:
-        name: wheel
-        path: dist/*.whl
-
-  upload-release-asset:
-    needs: build-wheel
-    runs-on: ubuntu-latest
-    steps:
-    - name: Checkout repository
-      uses: actions/checkout@v3
-
-    - name: Download wheel artifact
-      uses: actions/download-artifact@v3
-      with:
-        name: wheel
-        path: dist
-
     - name: Upload Release Asset
       uses: actions/upload-release-asset@v1
       with:
         upload_url: ${{ github.event.release.upload_url }}
         asset_path: dist/*.whl
-        asset_name: your_project-0.1.0-py3-none-any.whl
+        asset_name: $(basename dist/*.whl)
         asset_content_type: application/zip
