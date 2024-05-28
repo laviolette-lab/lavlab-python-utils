@@ -29,7 +29,7 @@ jobs:
       id: get_wheel
       run: echo "WHEEL_NAME=$(basename dist/*.whl)" >> $GITHUB_ENV
 
-    - name: Upload Release Asset
+    - name: Upload Versioned Release Asset
       uses: actions/upload-release-asset@v1
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -37,4 +37,14 @@ jobs:
         upload_url: ${{ github.event.release.upload_url }}
         asset_path: dist/${{ env.WHEEL_NAME }}
         asset_name: ${{ env.WHEEL_NAME }}
+        asset_content_type: application/zip
+        
+    - name: Upload Release Asset
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ github.event.release.upload_url }}
+        asset_path: dist/${{ env.WHEEL_NAME }}
+        asset_name: lavlab_python_utils-latest-py3-none-any.whl
         asset_content_type: application/zip
