@@ -53,7 +53,7 @@ jupyter = [
   "dash-bootstrap-components"
 ]
 
-[project.entry-points."lavlab-python-utils.service_providers"]
+[project.entry-points."lavlab_python_utils.service_providers"]
 OMERO = "lavlab.omero:OmeroServiceProvider"
 IDR = "lavlab.omero:IDRServiceProvider"
 

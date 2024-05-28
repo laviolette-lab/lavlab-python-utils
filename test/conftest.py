@@ -2,8 +2,9 @@
 # type: ignore
 import importlib.resources
 from importlib.metadata import EntryPoint, EntryPoints
-import toml
+
 import pytest
+import toml
 
 import lavlab
 
@@ -40,7 +41,7 @@ def mock_entrypoints():
         default_system_file=importlib.resources.files("test").joinpath("test.yaml")
     )
     lavlab.ServiceProviderFactory.entries = load_entry_points_from_toml(
-        "pyproject.toml", "lavlab-python-utils.service_providers"
+        "pyproject.toml", "lavlab_python_utils.service_providers"
     )
 
 

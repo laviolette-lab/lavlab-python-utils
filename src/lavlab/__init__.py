@@ -33,7 +33,7 @@ def assure_multiplication_string_is_int(string: str) -> int:
 class ServiceProviderFactory:
     """Factory to dynamically load and create service providers based on registered entry points."""
 
-    entries = entry_points(group="lavlab-python-utils.service_providers")
+    entries = entry_points(group="lavlab_python_utils.service_providers")
 
     @staticmethod
     def create_service_provider(service_name: str, **kwargs):
