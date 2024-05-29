@@ -43,11 +43,11 @@ def get_plane_at_resolution_level(  # pylint: disable=R0913
         OMERO Image Wrapper
     res_lvl : int
         Layer of image pyramid to pull
-    z : int
+    z_idx : int
         z-index to pull (usually 0 for lavlab purposes)
-    c : int
+    c_idx : int
         channel to pull, in rgb that's 0: red, 1: green, 2: blue
-    t : int
+    t_idx : int
         timepoint to pull (usually 0 for lavlab purposes)
     conn : BlitzGateway, optional
         OMERO Blitz Gateway, defaults to None and uses the one in the wrapper
