@@ -10,9 +10,10 @@ import numpy as np
 from skimage import measure, morphology
 from skimage.filters import threshold_otsu  # pylint: disable=E0611
 
-from lavlab import imsuite, omero
+import lavlab
+from lavlab import imsuite
 
-LOGGER = omero.LOGGER.getChild("tissuemask")
+LOGGER = lavlab.LOGGER.getChild("tissuemask")
 
 
 @np.vectorize
