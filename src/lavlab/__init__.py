@@ -276,7 +276,7 @@ class ResourceContext:
     def max_memory(self) -> int:
         """Controls max memory to be considered in bytes.
         Useful for exact limits on memory consumption when paired with memory_usage=1"""
-        return self._max_memory
+        return int(self._max_memory * self.memory_usage)
 
     @max_memory.setter
     def max_memory(self, value: int) -> None:
@@ -359,7 +359,7 @@ class HistologyContext:
             config["size_threshold"]
         )
         self._service = config["service"]
-        self._use_fast_compression = config["use_fast_compression"]
+        self._use_fast_compression = bool(config["use_fast_compression"])
         self._fast_compression_options = config["fast_compression_options"]
         self._slow_compression_options = config["slow_compression_options"]
         self._tiling_options = config["tiling_options"]
