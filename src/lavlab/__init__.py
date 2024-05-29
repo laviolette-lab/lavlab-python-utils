@@ -204,18 +204,11 @@ class ResourceContext:
     DEP_THREAD_ENUM = DependencyThreadConfiguration
 
     def __init__(self, config: dict) -> None:
-        self._max_cores = config.get("max_cores", 1)
-        self._memory_usage = config.get("memory_usage", 1)
-        self._max_memory = assure_multiplication_string_is_int(
-            config.get(
-                "max_memory", int(psutil.virtual_memory().total * self._memory_usage)
-            )
-        )
-        self._max_temp_storage = config.get(
-            "max_temp_storage", None
-        )  # None indicates no limit
-
-        self._io_max_threads = config.get("io_max_threads", 1)
+        self._max_cores = config["max_cores"]
+        self._memory_usage = config["memory_usage"]
+        self._max_memory = assure_multiplication_string_is_int(config["max_memory"])
+        self._max_temp_storage = config["max_temp_storage"]
+        self._io_max_threads = config["io_max_threads"]
         self._io_pool: Optional[ThreadPoolExecutor] = None
 
     def context_summary(self) -> list[str]:
@@ -363,13 +356,13 @@ class HistologyContext:
 
     def __init__(self, config: dict) -> None:
         self._size_threshold = assure_multiplication_string_is_int(
-            config.get("size_threshold", -1)
+            config["size_threshold"]
         )
-        self._service = config.get("service", {})
-        self._use_fast_compression = config.get("use_fast_compression", True)
-        self._fast_compression_options = config.get("fast_compression_options", {})
-        self._slow_compression_options = config.get("slow_compression_options", {})
-        self._tiling_options = config.get("tiling_options", {})
+        self._service = config["service"]
+        self._use_fast_compression = config["use_fast_compression"]
+        self._fast_compression_options = config["fast_compression_options"]
+        self._slow_compression_options = config["slow_compression_options"]
+        self._tiling_options = config["tiling_options"]
         self._service_provider = None
 
     @property
@@ -577,7 +570,7 @@ class ConfigCompiler:
 
         # Set max_memory if not specified
         if config["resources"]["max_memory"] is None:
-            avail = psutil.virtual_memory().available
+            avail = psutil.virtual_memory().total
             config["resources"]["max_memory"] = (
                 avail * config["resources"]["memory_usage"]
             )
@@ -606,10 +599,10 @@ class UtilContext:
     def __init__(self, **kwargs):
         config = ConfigCompiler.compile(**kwargs)
 
-        self.temp_dir = config.get("temp_dir")
-        self.noninteractive = config.get("noninteractive")
-        self.histology = self.HISTOLOGY_CLASS(config.get("histology"))
-        self.resources = self.RESOURCE_CLASS(config.get("resources"))
+        self.temp_dir = config["temp_dir"]
+        self.noninteractive = config["noninteractive"]
+        self.histology = self.HISTOLOGY_CLASS(config["histology"])
+        self.resources = self.RESOURCE_CLASS(config["resources"])
         self.log_context_summary()
 
     def log_context_summary(self):
