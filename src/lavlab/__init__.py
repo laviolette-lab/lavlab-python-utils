@@ -204,11 +204,11 @@ class ResourceContext:
     DEP_THREAD_ENUM = DependencyThreadConfiguration
 
     def __init__(self, config: dict) -> None:
-        self._max_cores = config["max_cores"]
-        self._memory_usage = config["memory_usage"]
+        self._max_cores = int(config["max_cores"])
+        self._memory_usage = float(config["memory_usage"])
         self._max_memory = assure_multiplication_string_is_int(config["max_memory"])
-        self._max_temp_storage = config["max_temp_storage"]
-        self._io_max_threads = config["io_max_threads"]
+        self._max_temp_storage = int(config["max_temp_storage"])
+        self._io_max_threads = int(config["io_max_threads"])
         self._io_pool: Optional[ThreadPoolExecutor] = None
 
     def context_summary(self) -> list[str]:
