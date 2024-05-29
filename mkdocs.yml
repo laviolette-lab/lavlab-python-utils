@@ -1,9 +1,21 @@
-site_name: Python Template
+# mkdocs.yml
+site_name: LavLab Python Utils
+site_description: Documentation for LaViolette Lab Python Utilities
+site_author: LaViolette Lab
+site_url: https://lavlab-python-utils.readthedocs.io/stable/
+
 theme:
   name: material
 
 plugins:
-  - mkdocstrings
+  - mkdocstrings:
+      handlers:
+        python:
+          options:
+            docstring_style: numpy
+            show_source: true
+            collecting: true
+
   - git-revision-date-localized
   - minify:
       minify_html: true
@@ -11,4 +23,27 @@ plugins:
 
 nav:
   - Home: index.md
-  - About: about.md
+  - Installation: installation.md
+  - Usage: usage.md
+  - API Reference: 
+    - __init__.py: api/init.md
+    - imsuite: api/imsuite.md
+    - login: api/login.md
+    - python_util: api/python_util.md
+    - tissuemask: api/tissuemask.md
+    - omero:
+      - __init__.py: api/omero/init.md
+      - files.py: api/omero/files.md
+      - helpers.py: api/omero/helpers.md
+      - images.py: api/omero/images.md
+      - rois.py: api/omero/rois.md
+      - tiles.py: api/omero/tiles.md
+    - jupyter:
+      - __init__.py: api/jupyter/init.md
+      - viewers.py: api/jupyter/viewers.md
+  - Contributing:
+    - Overview: contributing/index.md
+    - Implementing the Service Provider: contributing/service_provider.md
+    - Expanding Configurations: contributing/configurations.md
+    - Adding a New Feature Target: contributing/new_feature.md
+    - Adding a New Module: contributing/new_module.md

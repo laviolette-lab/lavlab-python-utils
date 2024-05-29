@@ -124,7 +124,7 @@ check = "mypy --install-types --non-interactive {args:src/lavlab test}"
 features = [ "omero", "jupyter" ]
 dependencies = [
   "mkdocs",
-  "mkdocstrings",
+  "mkdocstrings-python",
   "mkdocs-material",
   "mkdocs-autorefs",
   "mkdocs-minify-plugin",
