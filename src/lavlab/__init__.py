@@ -220,13 +220,13 @@ class ResourceContext:
         list of str
             List of lines to log
         """
-        free_memory = psutil.virtual_memory().available // (1024**3)  # GB
+        free_memory = psutil.virtual_memory().available // (1024**3)  # GiB
         return [
             f"=== Resource Context Summary ===\n"
             f"Max CPU Cores: {self.max_cores}\n"
             f"Max IO Threads: {self.io_max_threads}\n"
-            f"Memory Usage Limit: {int(self.max_memory) // (1024 ** 3)} GB\n"
-            f"Free System Memory: {free_memory} GB\n"
+            f"Memory Usage Limit: {self.max_memory // (1024 ** 3)} GiB\n"
+            f"Free System Memory: {free_memory} GiB\n"
         ]
 
     @property
