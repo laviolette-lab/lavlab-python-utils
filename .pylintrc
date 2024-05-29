@@ -1,8 +1,0 @@
-[REPORTS]
-# Tells whether to display a full report or only the messages
-reports=yes
-
-[MASTER]
-# Set the output format. Available formats are text, parseable, colorized, json, jsonextended, jsonwithhtml, jsonwithdetails, html, and msvs (visual studio).
-# You can also give a reporter class, e.g. mypackage.mymodule.MyReporterClass.
-output-format=colorized
