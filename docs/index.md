@@ -8,7 +8,7 @@ To get started with LavLab Python Utils, check out the following sections:
 
 - [Installation](installation.md): Learn how to install LavLab Python Utils.
 - [Usage](usage.md): Discover how to use the utilities provided by the package.
-- [API Reference](api.md): Explore the functions and classes available.
+- [API Reference](api): Explore the functions and classes available.
 - [Contributing](contributing/index.md): Find out how you can contribute to the project.
 
 ## Contributing
