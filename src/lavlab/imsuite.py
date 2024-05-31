@@ -9,6 +9,7 @@ import os
 from enum import Enum
 from typing import BinaryIO, Union
 
+import highdicom as hd
 import matplotlib.pyplot
 import nibabel as nib
 import numpy as np
@@ -18,6 +19,7 @@ import pyvips as pv  # type: ignore
 import scipy  # type: ignore
 import scipy.ndimage  # type: ignore
 import skimage
+from nibabel.filebasedimages import FileBasedImage
 
 import lavlab
 from lavlab.python_util import is_memsafe_pvimg
@@ -66,19 +68,25 @@ def imread(image_path: Union[os.PathLike, BinaryIO, str], wild=False) -> np.ndar
             LOGGER.warning(
                 "Nifti detected, use niftiread() for clarity if possible otherwise enable wild. Using niftiread..."  # pylint: disable=line-too-long
             )
-        return niftiread(image_path)
+        nii = niftiread(image_path)
+        assert isinstance(nii, np.ndarray)
+        return nii
     if image_path.endswith(".dcm"):
         if not wild:
             LOGGER.warning(
                 "Dicom detected, use dicomread() for clarity if possible otherwise enable wild. Using dicomread..."  # pylint: disable=line-too-long
             )
-        return dicomread(image_path)
+        dcm = dicomread(image_path)
+        assert isinstance(dcm, np.ndarray)
+        return dcm
     if os.path.isdir(image_path):
         if not wild:
             LOGGER.warning(
                 "Dicom directory detected, use dicomread_volume() for clarity if possible otherwise enable wild. Using dicomread_volume"  # pylint: disable=line-too-long
             )
-        return dicomread_volume(image_path)
+        dcm_vol = dicomread_volume(image_path)
+        assert isinstance(dcm_vol, np.ndarray)
+        return dcm_vol
 
     img = pv.Image.new_from_file(str(image_path))
     assert isinstance(img, pv.Image)
@@ -88,64 +96,79 @@ def imread(image_path: Union[os.PathLike, BinaryIO, str], wild=False) -> np.ndar
     return img.numpy()
 
 
-def niftiread(image_path: Union[os.PathLike, str]) -> np.ndarray:
+def niftiread(
+    image_path: Union[os.PathLike, str], as_nib=False
+) -> Union[np.ndarray, FileBasedImage]:
     """Loads a nifti from a file.
 
     Parameters
     ----------
-    image_path : os.PathLike or string representing a file
+    image_path : os.PathLike or str
         Path to nifti.
+    as_nib : bool, optional
+        If True, returns a nibabel image class, by default False.
 
     Returns
     -------
-    np.ndarray
-        Array of pixel values.
+    np.ndarray or FileBasedImage
+        Array of pixel values or appropriate Nifti image class when as_nib=True.
     """
-    return nib.load(str(image_path)).get_fdata()  # type: ignore
+    image_path = str(image_path)
+    if as_nib:
+        return nib.load(image_path)
+    return nib.load(image_path).get_fdata()  # type: ignore
 
 
-def dicomread(image_path: Union[os.PathLike, str]) -> np.ndarray:
+def dicomread(
+    image_path: Union[os.PathLike, str], as_dataset=False
+) -> Union[np.ndarray, pydicom.Dataset]:
     """Reads a dicom from a file.
 
     Parameters
     ----------
-    image_path : os.PathLike or string representing a file
+    image_path : os.PathLike or str
         Path to a dicom file.
 
     Returns
     -------
-    np.ndarray
-        Array of pixel values.
+    np.ndarray or pydicom.Dataset
+        Array of pixel values, or Dataset if as_dataset=True.
     """
+    if as_dataset:
+        return pydicom.dcmread(image_path)
     return pydicom.dcmread(image_path).pixel_array
 
 
 def dicomread_volume(
-    dicom_dir: Union[os.PathLike, str], file_extension=".dcm"
-) -> np.ndarray:
+    dicom_dir: Union[os.PathLike, str], as_sequence=False
+) -> Union[np.ndarray, pydicom.Sequence]:
     """Reads a dicom series from a directory.
 
     Parameters
     ----------
-    dicom_dir : os.PathLike or string representing a directory
-        Directory with the dicoms.
+    dicom_dir : os.PathLike or str
+        Path to directory with the dicoms.
+    as_sequence : bool, optional
+        If True, returns a pydicom sequence of pydicom datasets, by default False.
 
     Returns
     -------
-    np.ndarray
-        Dicom series.
+    np.ndarray or pydicom.Sequence
+        Dicom series as numpy volume, or Sequence if as_sequence=True.
     """
 
     # Get a list of all DICOM files in the directory
     dicom_files = [
         os.path.join(dicom_dir, filename)
         for filename in os.listdir(dicom_dir)
-        if filename.endswith(file_extension)
+        if filename.endswith(".dcm")
     ]
 
     # Sort the DICOM files by instance number to ensure correct order
     dicoms = [pydicom.dcmread(file) for file in dicom_files]
     dicoms.sort(key=lambda x: x.InstanceNumber)
+    if as_sequence:
+        return pydicom.Sequence(dicoms)
 
     # Read the first DICOM file to get image dimensions
     first_ds = dicoms[0]
@@ -161,6 +184,27 @@ def dicomread_volume(
         ds = pydicom.dcmread(file_path)
         volume[i, :, :] = ds.pixel_array
     return volume
+
+
+def dicomsegread(
+    image_path: Union[os.PathLike, str], as_volume: True
+) -> Union[np.ndarray, hd.seg.Segmentation]:
+    """Reads a dicom segmentation from a file.
+
+    Parameters
+    ----------
+    image_path : os.PathLike or str
+        Path to a dicom segmentation file.
+
+    Returns
+    -------
+    np.ndarray
+        Array of pixel values.
+    """
+    dicom_seg = hd.seg.segread(image_path)
+    if as_volume:
+        return dicomseg_to_nifti_vol(dicom_seg)
+    return dicom_seg.pixel_array
 
 
 def wsiread(image_path: Union[os.PathLike, str]) -> pv.Image:
@@ -189,31 +233,144 @@ def wsiread(image_path: Union[os.PathLike, str]) -> pv.Image:
 
 
 def imwrite(
-    img: Union[np.ndarray, pv.Image], path: os.PathLike, **kwargs
-) -> os.PathLike:
+    img: Union[np.ndarray, pv.Image], path: Union[os.PathLike, str], **kwargs
+) -> str:
     """Writes an image to path. kwargs are passthrough to wrapped function.
 
     Parameters
     ----------
     img : Union[np.ndarray, pv.Image]
         Numpy array or PyVips image.
-    path : os.PathLike
+    path : os.PathLike or str
         Path to desired file.
 
     Returns
     -------
-    os.PathLike
+    str
         Path of newly created file.
     """
+    path = str(path)
+    if path.endswith(".nii") or path.endswith(".nii.gz"):
+        LOGGER.warning(
+            "Nifti detected, use niftiwrite() for clarity! Using niftiwrite..."
+        )
+        return niftiwrite(img, path, **kwargs)
+    if path.endswith(".dcm"):
+        LOGGER.warning(
+            "Dicom detected, use dicomwrite() for clarity! Using dicomwrite..."
+        )
+        return dicomwrite(img, path, **kwargs)
     if not isinstance(img, pv.Image):
         assert isinstance(img, np.ndarray)
         img = pv.Image.new_from_array(img)
     assert isinstance(img, pv.Image)
-    # need to figure out default compression settings some day
-    settings = (
-        kwargs if kwargs else {}
-    )  # lavlab.ctx.histology.get_compression_settings()
-    img.write_to_file(path, **settings)
+    img.write_to_file(path, **kwargs)
+    return path
+
+
+def niftiwrite(
+    img: Union[np.ndarray, nib.Nifti1Image, nib.Nifti2Image],
+    path: Union[os.PathLike, str],
+    affine=None,
+    **kwargs,
+) -> str:
+    """Writes an image to path. kwargs are passthrough to wrapped function.
+
+    Parameters
+    ----------
+    img : np.ndarray or nib.Nifti1Image or nib.Nifti2Image
+        Numpy array or Nifti image. If array, Nifti image is created.
+    path : os.PathLike or str
+        Path to desired file.
+    affine : np.ndarray, optional
+        Affine matrix for the image, by default uses nibabel's default.
+    kwargs : dict
+        Additional arguments to pass to nib.save.
+
+    Returns
+    -------
+    str
+        Path of newly created file.
+    """
+    path = str(path)
+    if not path.endswith(".nii") and not path.endswith(".nii.gz"):
+        LOGGER.warning(
+            "Nifti extension not detected in path! Niftis should end in .nii or .nii.gz! Appending .nii.gz..."  # pylint: disable=line-too-long
+        )
+        path += ".nii.gz"
+    if isinstance(img, np.ndarray):
+        img = nib.Nifti1Image(img, affine)
+    nib.save(img, path, **kwargs)
+    return path
+
+
+def dicomwrite(
+    img: Union[np.ndarray, pydicom.Dataset],
+    path: Union[os.PathLike, str],
+    write_like_original: bool = False,
+) -> str:
+    """Writes an image to path. kwargs are passthrough to wrapped function.
+
+    Parameters
+    ----------
+    img : np.ndarray or pydicom.Dataset
+        Numpy array or Dicom dataset. If array, Dicom dataset is created.
+    path : os.PathLike or str
+        Path to desired file.
+    kwargs : dict
+        Additional arguments to pass to pydicom.dcmwrite.
+
+    Returns
+    -------
+    str
+        Path of newly created file.
+    """
+    path = str(path)
+    if not path.endswith(".dcm"):
+        LOGGER.warning(
+            "Dicom extension not detected in path! Dicoms should end in .dcm! Appending .dcm..."
+        )
+        path += ".dcm"
+    if isinstance(img, np.ndarray):
+        LOGGER.warning(
+            "Chances are you won't be adding all the metadata you want and need by passing a numpy array to dicomwrite! Use pydicom.Dataset instead! Converting to a Dataset and continuing"  # pylint: disable=line-too-long
+        )
+        img = pydicom.Dataset()
+        img.PixelData = img.tobytes()
+        img.Rows, img.Columns = img.shape
+    pydicom.dcmwrite(path, img, write_like_original)
+    return path
+
+
+def wsiwrite(
+    img: pv.Image, path: Union[os.PathLike, str], use_fast_compression=None, **kwargs
+) -> str:
+    """Writes an image to path. kwargs are passthrough to wrapped function.
+
+    Parameters
+    ----------
+    img : pv.Image
+        PyVips image.
+    path : os.PathLike or str
+        Path to desired file.
+    use_fast_compression : bool, optional
+        Use fast compression as configured in context, by default uses bool from config.
+
+    Returns
+    -------
+    str
+        Path of newly created file.
+    """
+    path = str(path)
+    if use_fast_compression is None:
+        use_fast_compression = lavlab.ctx.histology.use_fast_compression
+    if not kwargs:
+        kwargs = (
+            lavlab.ctx.histology.fast_compression_options
+            if use_fast_compression
+            else lavlab.ctx.histology.slow_compression_options
+        )
+    img.write_to_file(path, **kwargs)
     return path
 
 
@@ -226,7 +383,7 @@ def imresize2d(img: pv.Image, scale: tuple[float, float]) -> pv.Image:
     img : pv.Image
         Input 2D image.
     target_size : Tuple[int, int]
-        Desired dimensions as a tuple of (width, height).
+        Scale factor h and v.
 
     Returns
     -------
@@ -740,6 +897,37 @@ def get_color_region_contours(
         contour = [(x, y) for y, x in contour]
         contours[i] = (None, rgb_val, contour)
     return contours
+
+
+def dicomseg_to_nifti_vol(dicom_seg_ds: hd.seg.Segmentation) -> np.ndarray:
+    """
+    Converts a DICOM Segmentation object to a 3D numpy array.
+
+    Parameters
+    ----------
+    dicom_seg_ds : hd.seg.Segmentation
+        DICOM Segmentation object.
+
+    Returns
+    -------
+    np.ndarray
+        3D numpy array of the segmentation.
+    """
+    rows, cols = dicom_seg_ds.Rows, dicom_seg_ds.Columns
+    slice_count = len(
+        dicom_seg_ds.ReferencedSeriesSequence[0].ReferencedInstanceSequence
+    )
+    full_dims = (slice_count, rows, cols)
+    full_vol = np.zeros(full_dims)
+
+    for i, frame in enumerate(dicom_seg_ds.PerFrameFunctionalGroupsSequence):
+        slice_idx = frame.FrameContentSequence[0].DimensionIndexValues[1]
+        full_vol[slice_idx] = dicom_seg_ds.pixel_array[i]
+    # lps to ras
+    full_vol = np.flip(full_vol, axis=0)
+    full_vol = np.flip(full_vol, axis=1)
+    full_vol = full_vol.transpose((2, 1, 0))
+    return full_vol
 
 
 #
