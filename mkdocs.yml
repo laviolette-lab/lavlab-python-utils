@@ -24,7 +24,11 @@ plugins:
 nav:
   - Home: index.md
   - Installation: installation.md
-  - Usage: usage.md
+  - Usage: 
+    - Overview: usage/index.md
+    - Image Processing: usage/image_processing.md
+    - OMERO: usage/omero.md
+    - Jupyter: usage/jupyter.md
   - API Reference: 
     - __init__.py: api/init.md
     - imsuite: api/imsuite.md
