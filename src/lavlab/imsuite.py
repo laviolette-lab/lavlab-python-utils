@@ -163,6 +163,10 @@ def dicomread_volume(
         for filename in os.listdir(dicom_dir)
         if filename.endswith(".dcm")
     ]
+    if not dicom_files:
+        dicom_files = [
+            os.path.join(dicom_dir, filename) for filename in os.listdir(dicom_dir)
+        ]
 
     # Sort the DICOM files by instance number to ensure correct order
     dicoms = [pydicom.dcmread(file) for file in dicom_files]

@@ -73,8 +73,7 @@ def test_dicomread():
 def test_dicomread_volume():
     # Test the dicomread_volume function
     directory = get_testdata_file("dicomdirtests/98892003/MR1")
-    # dicoms from pydicom do not have .dcm extension, ignore it.
-    result = dicomread_volume(directory, file_extension="")
+    result = dicomread_volume(directory)
     assert isinstance(result, np.ndarray), "The result should be a numpy array."
 
 
