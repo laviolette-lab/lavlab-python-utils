@@ -155,5 +155,7 @@ dmypy.json
 cython_debug/
 
 # End of https://www.toptal.com/developers/gitignore/api/python,jupyternotebooks
-LR8_F_46.jpg
-lr100.jpeg
+
+*.jpg
+*.jpeg
+.ipynb
