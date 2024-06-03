@@ -765,6 +765,9 @@ impyramid_expand = skimage.transform.pyramid_expand
 impyramid_reduce = skimage.transform.pyramid_reduce
 """just skimage.transform.pyramid_reduce() see docs for more"""
 
+imgaussfilt = scipy.ndimage.gaussian_filter
+"""just scipy.ndimage.gaussian_filter() see docs for more"""
+
 
 #
 ## Drawing and Masking
