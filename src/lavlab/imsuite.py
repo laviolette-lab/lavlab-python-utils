@@ -432,9 +432,11 @@ def imresize(
     """
     if isinstance(img, np.ndarray):
         dimensions = len(img.shape)
-        if dimensions == 3 and img.shape[0] == 3:
+        print(img.shape)
+        if dimensions == 3 and img.shape[2] == 3:
             dimensions = 2
-        if dimensions == 2:
+            width, height = img.shape[1], img.shape[0]
+        elif dimensions == 2:
             height, width = img.shape
     elif isinstance(img, pv.Image):
         dimensions = 2
@@ -710,8 +712,37 @@ def edge(img_arr: np.ndarray, method: str = "SOBEL", **kwargs) -> np.ndarray:
     return function(img_arr, **kwargs)
 
 
-imshow = matplotlib.pyplot.imshow
-"""Just matplotlib.pyplot.imshow() see docs for more"""
+def imshow(image, **kwargs):
+    """Just matplotlib.pyplot.imshow() see docs for more"""
+    matplotlib.pyplot.figure()
+    matplotlib.pyplot.imshow(image, **kwargs)
+
+
+def imbinarize(image):
+    """
+    Generates a binary image from a grayscale image using Otsu's thresholding.
+
+    Parameters
+    ----------
+    image : np.ndarray
+        numpy array
+
+    Returns
+    -------
+    np.ndarray
+        binary image
+    """
+    if len(image.shape) == 3:
+        image = rgb2gray(image)
+
+    # Apply Otsu's thresholding
+    thresh = skimage.filters.threshold_otsu(image)
+    binary_image = image > thresh
+    return binary_image
+
+
+# imshow = matplotlib.pyplot.imshow
+# """Just matplotlib.pyplot.imshow() see docs for more"""
 
 rgb2gray = skimage.color.rgb2gray
 """Just skimage.color.rgb2gray() see docs for more"""
@@ -752,8 +783,8 @@ watershed = skimage.segmentation.watershed
 medfilt2 = skimage.filters.rank.median
 """just skimage.filters.rank.median() see docs for more"""
 
-imbinarize = skimage.filters.threshold_otsu
-"""just skimage.filters.threshold_otsu() see docs for more"""
+# imbinarize = skimage.filters.threshold_otsu
+# """just skimage.filters.threshold_otsu() see docs for more"""
 
 regionprops = skimage.measure.regionprops
 """just skimage.measure.regionprops() see docs for more"""
