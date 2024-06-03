@@ -432,7 +432,7 @@ def imresize(
     """
     if isinstance(img, np.ndarray):
         dimensions = len(img.shape)
-        if dimensions == 3 and img.shape[0] == 1:
+        if dimensions == 3 and img.shape[0] == 3:
             dimensions = 2
         if dimensions == 2:
             height, width = img.shape
