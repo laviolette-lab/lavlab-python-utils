@@ -566,35 +566,6 @@ def imwarp(
     return rotated_img
 
 
-# pyvips affine doesn't support translation, wait until this is required
-# def imtranslate(img_arr: Union[np.ndarray, pv.Image], tx: int, ty: int,
-#              ) -> Union[np.ndarray, pv.Image]:
-#     """Translates a region from an image using pyvips
-
-#     :param img_arr: Input image as a NumPy array or pyvips Image.
-#     :type img_arr: Union[np.ndarray, pv.Image]
-#     :param tx: x axis pixel shift
-#     :type tx: int
-#     :param ty: y axis pixel shift
-#     :type ty: int
-#     :return: translated image
-#     :rtype: Union[np.ndarray, pv.Image]
-#     """
-#     img = img_arr
-#     if not isinstance(img, pv.Image):
-#         assert isinstance(img, np.ndarray)
-#         img_arr = pv.Image.new_from_array(img)
-#     assert isinstance(img_arr, pv.Image)
-
-#     translated_img = img_arr.affine((1,0,tx,0,1,ty), interpolate=pv.Interpolate.new('nearest'))
-#     assert isinstance(translated_img, pv.Image)
-
-#     # Retain the input type in the output
-#     if isinstance(img, np.ndarray):
-#         return translated_img.numpy()
-#     return translated_img
-
-
 def imadjust(
     img_arr: np.ndarray,
     tol: int = 1,
