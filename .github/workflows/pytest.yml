@@ -1,5 +1,9 @@
 name: Run Pytest and Codecov with Hatch
 
+permissions:
+  id-token: write
+  contents: read
+  
 on:
   push:
     branches:
