@@ -5,6 +5,7 @@ from __future__ import annotations
 import bisect
 
 # import logging
+import io
 import os
 from enum import Enum
 from typing import BinaryIO, Union
@@ -97,7 +98,7 @@ def imread(image_path: Union[os.PathLike, BinaryIO, str], wild=False) -> np.ndar
 
 
 def niftiread(
-    image_path: Union[os.PathLike, str], as_nib=False
+    image_path: Union[os.PathLike, str, io.BytesIO], as_nib=False
 ) -> Union[np.ndarray, FileBasedImage]:
     """Loads a nifti from a file.
 
@@ -113,9 +114,11 @@ def niftiread(
     np.ndarray or FileBasedImage
         Array of pixel values or appropriate Nifti image class when as_nib=True.
     """
+    if isinstance(image_path, io.BytesIO):
+        return nib.Nifti1Image.from_stream(image_path)
     image_path = str(image_path)
     if as_nib:
-        return nib.load(image_path)
+        return nib.load(image_path)  # type: ignore
     return nib.load(image_path).get_fdata()  # type: ignore
 
 
@@ -140,14 +143,15 @@ def dicomread(
 
 
 def dicomread_volume(
-    dicom_dir: Union[os.PathLike, str], as_sequence=False
+    dicom_dir: Union[os.PathLike, str, list[Union[io.BytesIO, os.PathLike, str]]],
+    as_sequence=False,
 ) -> Union[np.ndarray, pydicom.Sequence]:
     """Reads a dicom series from a directory.
 
     Parameters
     ----------
-    dicom_dir : os.PathLike or str
-        Path to directory with the dicoms.
+    dicom_dir : os.PathLike or str or list[io.BytesIO or os.PathLike or str]
+        Path to directory with the dicoms or list of dicoms as path or bytes.
     as_sequence : bool, optional
         If True, returns a pydicom sequence of pydicom datasets, by default False.
 
@@ -158,15 +162,18 @@ def dicomread_volume(
     """
 
     # Get a list of all DICOM files in the directory
-    dicom_files = [
-        os.path.join(dicom_dir, filename)
-        for filename in os.listdir(dicom_dir)
-        if filename.endswith(".dcm")
-    ]
-    if not dicom_files:
+    if isinstance(dicom_dir, list):
+        dicom_files = dicom_dir
+    else:
         dicom_files = [
-            os.path.join(dicom_dir, filename) for filename in os.listdir(dicom_dir)
+            os.path.join(dicom_dir, filename)
+            for filename in os.listdir(dicom_dir)
+            if filename.endswith(".dcm")
         ]
+        if not dicom_files:
+            dicom_files = [
+                os.path.join(dicom_dir, filename) for filename in os.listdir(dicom_dir)
+            ]
 
     # Sort the DICOM files by instance number to ensure correct order
     dicoms = [pydicom.dcmread(file) for file in dicom_files]
