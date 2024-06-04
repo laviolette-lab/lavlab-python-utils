@@ -21,6 +21,7 @@ import scipy  # type: ignore
 import scipy.ndimage  # type: ignore
 import skimage
 from nibabel.filebasedimages import FileBasedImage
+from pydicom.errors import InvalidDicomError
 
 import lavlab
 from lavlab.python_util import is_memsafe_pvimg
@@ -175,8 +176,18 @@ def dicomread_volume(
                 os.path.join(dicom_dir, filename) for filename in os.listdir(dicom_dir)
             ]
 
-    # Sort the DICOM files by instance number to ensure correct order
-    dicoms = [pydicom.dcmread(file) for file in dicom_files]
+    dicoms = []
+    for file in dicom_files:
+        try:
+            dicoms.append(pydicom.dcmread(file))
+        except InvalidDicomError:
+            LOGGER.warning(f"Invalid DICOM file: {file}")
+
+    if len(dicoms) == 0:
+        raise ValueError("No valid DICOM files found in the directory.")
+    if len({ds.SeriesInstanceUID for ds in dicoms}) != 1:
+        raise ValueError("All DICOM files must belong to the same series.")
+
     dicoms.sort(key=lambda x: x.InstanceNumber)
     if as_sequence:
         return pydicom.Sequence(dicoms)
@@ -188,12 +199,11 @@ def dicomread_volume(
     slices = len(dicoms)
 
     # Initialize a 3D array to store pixel data
-    volume = np.zeros((slices, rows, columns), dtype=np.uint16)
+    volume = np.zeros((rows, columns, slices), dtype=np.uint16)
 
     # Read each DICOM file and store pixel data in the volume array
-    for i, file_path in enumerate(dicom_files):
-        ds = pydicom.dcmread(file_path)
-        volume[i, :, :] = ds.pixel_array
+    for i, ds in enumerate(dicoms):
+        volume[:, :, i] = ds.pixel_array
     return volume
 
 
