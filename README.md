@@ -26,7 +26,7 @@ You can install LavLab Python Utils via pip:
 ```bash
 python3 -m pip install https://github.com/laviolette-lab/lavlab-python-utils/releases/latest/download/lavlab_python_utils-latest-py3-none-any.whl
 # optional install targets
-pip install lavlab-python-utils[omero,jupyter]
+python3 -m pip install 'lavlab-python-utils[all]'
 ```
 
 ## Documentation
