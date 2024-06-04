@@ -14,6 +14,8 @@ We support the following install targets:
   * installs omero-py for omero api access
 * jupyter
   * installs dash for performant image viewing
+* all
+  * installs all optional dependencies
 
 ## Using versioned wheel
 
