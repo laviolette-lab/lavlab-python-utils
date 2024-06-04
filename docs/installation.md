@@ -9,6 +9,11 @@ python3 -m pip install https://github.com/laviolette-lab/lavlab-python-utils/rel
 # optional install targets, must install wheel from github using command above first!
 python3 -m pip install 'lavlab-python-utils[all]'
 ```
+We support the following install targets:
+* omero
+  * installs omero-py for omero api access
+* jupyter
+  * installs dash for performant image viewing
 
 ## Using versioned wheel
 
