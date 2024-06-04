@@ -31,7 +31,7 @@ python3 -m pip install 'lavlab-python-utils[all]'
 
 ## Documentation
 
-Comprehensive documentation is available on [Read the Docs]([https://your-docs-link](https://lavlab-python-utils.readthedocs.io/stable/)). This includes detailed API references, usage examples, and tutorials.
+Comprehensive documentation is available on [Read the Docs](https://lavlab-python-utils.readthedocs.io/stable/). This includes detailed API references, usage examples, and tutorials.
 
 ## Contributing
 
