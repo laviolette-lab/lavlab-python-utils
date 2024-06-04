@@ -8,6 +8,7 @@
 # - mkdocs-minify-plugin
 # - mkdocs-material-extensions
 # - mkdocs-git-revision-date-localized-plugin
+# - highdicom
 # - keyring
 # - matplotlib
 # - nibabel
@@ -512,6 +513,10 @@ h11==0.14.0 \
     --hash=sha256:8f19fbbe99e72420ff35c00b27a34cb9937e902a8b810e2c88300c6f0a3b699d \
     --hash=sha256:e3fe4ac4b851c468cc8363d500db52c2ead036020723024a109d37346efaa761
     # via httpcore
+highdicom==0.22.0 \
+    --hash=sha256:2f9c7f468924afafb57d49a24c3c96477fe4c5d1e8b6849097d193f00eab6cda \
+    --hash=sha256:62442fb9e77c05489c8ff99e6a30ed88fa03842a1fb70616dcf934fe4e3b1ca3
+    # via hatch.envs.docs
 htmlmin2==0.1.13 \
     --hash=sha256:75609f2a42e64f7ce57dbff28a39890363bde9e7e5885db633317efbdf8c79a2
     # via mkdocs-minify-plugin
@@ -1058,6 +1063,7 @@ numpy==1.26.4 \
     # via
     #   contourpy
     #   dash-slicer
+    #   highdicom
     #   imageio
     #   matplotlib
     #   nibabel
@@ -1181,10 +1187,48 @@ pillow==10.3.0 \
     --hash=sha256:ff61bfd9253c3915e6d41c651d5f962da23eda633cf02262990094a18a55371a
     # via
     #   dash-slicer
+    #   highdicom
     #   imageio
     #   matplotlib
     #   omero-py
+    #   pillow-jpls
     #   scikit-image
+pillow-jpls==1.3.2 \
+    --hash=sha256:0307b8506862892139a8ce3c63f34e7fd6dfed59bd6c96b677dcf7e03df815a4 \
+    --hash=sha256:058e8ad9fce542673703ae1032dc3f4fa3aaf39a8114ce087bce0bcb3a684d95 \
+    --hash=sha256:0eadbab278b1c54d6fa79085e0331e0db8799813e7009a6709bce4ad484e0711 \
+    --hash=sha256:20fb78195f70ace9cdfd863cb5b3e76d9c9d2ad20aab1b4c87c0bad9aab90563 \
+    --hash=sha256:28bdb039cddb68933024330453c2692c6c595e546d0ce9305217413045fca8d4 \
+    --hash=sha256:2d1a223a842dd97e3af324e80d07d4dbb9aa19ccab3b46b1c39e2ea231e7dd00 \
+    --hash=sha256:34a8d6783a46f8f41c7c4dcd0235b3c0a893818492e8f2500b4a4e70886b5959 \
+    --hash=sha256:3aa7e3e48f5e29c22f565e677e27d029e3a302cf56b98c1115835f7c08875453 \
+    --hash=sha256:4125954831a91f1f6484f21ef6e521ca214955322e207abb487ebb7cb7ad1b21 \
+    --hash=sha256:463ee0eb8c6004fbca535f044b8f7969fa324c2ea4d992158f8bad0ff8ca91dc \
+    --hash=sha256:5a87864a95f0e36b32908f12251b5e8b7fa14551a89f27c916cc0e69fdc3382f \
+    --hash=sha256:5f87c1cef6de984f07c08d34a84e35e69643d3bc6a3e39241089f4be38f864da \
+    --hash=sha256:6bbb20d063fc9efe2474ba7594f203288e5bab75b0cfca32d2d4432fb9053de3 \
+    --hash=sha256:7610b9aad5295eb6adc2e658df0dd995b38fef7d4c72c4ef63c1977989f5e701 \
+    --hash=sha256:85a42e28cac15b9e25a65588a68a1ba65ed5334a7f7a9b57bcab1223ddf65dae \
+    --hash=sha256:8a6c1e8c76b94620e0070948b91771461f7d49cc6be2575e233f6056ffe1ec26 \
+    --hash=sha256:8b4740afc7555fb7bce95d6c507069fc0cc9800892e336dba18c5302ef7364a5 \
+    --hash=sha256:91553669c4ecaf92ffa53426870190cb1b5bdf2795cddbeac1ae6fc3120c939a \
+    --hash=sha256:97d3265f8fcdd2add41a4ca49f464fd6e0982c0225ecbc80f30175fa04ce4e3c \
+    --hash=sha256:99a4c3598cf0a82885e3691307fd222b763c69c5b4a15223998679377247bc50 \
+    --hash=sha256:9cb643dd50c8fa848c16fe5e41350049ca762499e22cf5fb4cd5f67ae2c027d1 \
+    --hash=sha256:a0e04d6ca24dea9763a544518fc06c737499ab9075d216776b86e054be83599c \
+    --hash=sha256:a1f1d47544bf824a6262678e5884815f6a2df8cef410bcd9365e213450a4853e \
+    --hash=sha256:a79106cc1094385ac1d8670a3bb4d5fe67a7e49d405673d241bf19535d557318 \
+    --hash=sha256:ac607508232cdafb09e77f5280211e25d7678152edb0885f0dd374e0b651e2c2 \
+    --hash=sha256:ad0afb2c1676bc7d1618cf3837e9fc58997c8f0527464d9f524c19a36d666ce9 \
+    --hash=sha256:c822fafda531bc047068663722f86fb67083b572957b38fbc818b6339a817302 \
+    --hash=sha256:d1a00f77bd2d33a93082b9496c6891151fed1e1e1b915b60bdcad5f28085a9fc \
+    --hash=sha256:d64f4df3c385466aa897a1c70ffe4ecf91c611ca77f524321ddaf3969daede92 \
+    --hash=sha256:dea160c6e100b05c896a8434b0b9021870d7c4b055051ec637536437df218da6 \
+    --hash=sha256:e837011ad129ff9d2f0c17087856eeb493b208816f41ef82daa21d7cd21fcd53 \
+    --hash=sha256:f1ea5f90a3e30e12a5844e850393ee43acc281712bca97fd6545252d652c6f0e \
+    --hash=sha256:f346cc2f957c7b726266d46749028832351599a737bb27671eda5853784d02c3 \
+    --hash=sha256:f8956774bb9bc23aa85df733b21eaf128c1e115feedf6f37d88c1955d52c444d
+    # via highdicom
 platformdirs==4.2.0 \
     --hash=sha256:0614df2a2f37e1a662acbd8e2b25b92ccf8632929bc6d43467e17fe89c75e068 \
     --hash=sha256:ef0cc731df711022c174543cb70a9b5bd22e5a9337c8624ef2c2ceb8ddad8768
@@ -1249,7 +1293,9 @@ pycparser==2.22 \
 pydicom==2.4.4 \
     --hash=sha256:90b4801d851ce65be3df520e16bbfa3d6c767cf2a3a3b1c18f6780e6b670b87a \
     --hash=sha256:f9f8e19b78525be57aa6384484298833e4d06ac1d6226c79459131ddb0bd7c42
-    # via hatch.envs.docs
+    # via
+    #   hatch.envs.docs
+    #   highdicom
 pygments==2.17.2 \
     --hash=sha256:b27c2826c47d0f3219f29554824c30c5e8945175d888647acd804ddd04af846c \
     --hash=sha256:da46cec9fd2de5be3a8a784f434e4c4ab670b4ff54d605c4c2717e9d49c4c367
