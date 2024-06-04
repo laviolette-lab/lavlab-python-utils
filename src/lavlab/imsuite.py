@@ -5,6 +5,7 @@ from __future__ import annotations
 import bisect
 
 # import logging
+import io
 import os
 from enum import Enum
 from typing import BinaryIO, Union
@@ -20,6 +21,7 @@ import scipy  # type: ignore
 import scipy.ndimage  # type: ignore
 import skimage
 from nibabel.filebasedimages import FileBasedImage
+from pydicom.errors import InvalidDicomError
 
 import lavlab
 from lavlab.python_util import is_memsafe_pvimg
@@ -97,7 +99,7 @@ def imread(image_path: Union[os.PathLike, BinaryIO, str], wild=False) -> np.ndar
 
 
 def niftiread(
-    image_path: Union[os.PathLike, str], as_nib=False
+    image_path: Union[os.PathLike, str, io.BytesIO], as_nib=False
 ) -> Union[np.ndarray, FileBasedImage]:
     """Loads a nifti from a file.
 
@@ -113,9 +115,11 @@ def niftiread(
     np.ndarray or FileBasedImage
         Array of pixel values or appropriate Nifti image class when as_nib=True.
     """
+    if isinstance(image_path, io.BytesIO):
+        return nib.Nifti1Image.from_stream(image_path)
     image_path = str(image_path)
     if as_nib:
-        return nib.load(image_path)
+        return nib.load(image_path)  # type: ignore
     return nib.load(image_path).get_fdata()  # type: ignore
 
 
@@ -140,14 +144,15 @@ def dicomread(
 
 
 def dicomread_volume(
-    dicom_dir: Union[os.PathLike, str], as_sequence=False
+    dicom_dir: Union[os.PathLike, str, list[Union[io.BytesIO, os.PathLike, str]]],
+    as_sequence=False,
 ) -> Union[np.ndarray, pydicom.Sequence]:
     """Reads a dicom series from a directory.
 
     Parameters
     ----------
-    dicom_dir : os.PathLike or str
-        Path to directory with the dicoms.
+    dicom_dir : os.PathLike or str or list[io.BytesIO or os.PathLike or str]
+        Path to directory with the dicoms or list of dicoms as path or bytes.
     as_sequence : bool, optional
         If True, returns a pydicom sequence of pydicom datasets, by default False.
 
@@ -158,18 +163,31 @@ def dicomread_volume(
     """
 
     # Get a list of all DICOM files in the directory
-    dicom_files = [
-        os.path.join(dicom_dir, filename)
-        for filename in os.listdir(dicom_dir)
-        if filename.endswith(".dcm")
-    ]
-    if not dicom_files:
+    if isinstance(dicom_dir, list):
+        dicom_files = dicom_dir
+    else:
         dicom_files = [
-            os.path.join(dicom_dir, filename) for filename in os.listdir(dicom_dir)
+            os.path.join(dicom_dir, filename)
+            for filename in os.listdir(dicom_dir)
+            if filename.endswith(".dcm")
         ]
+        if not dicom_files:
+            dicom_files = [
+                os.path.join(dicom_dir, filename) for filename in os.listdir(dicom_dir)
+            ]
 
-    # Sort the DICOM files by instance number to ensure correct order
-    dicoms = [pydicom.dcmread(file) for file in dicom_files]
+    dicoms = []
+    for file in dicom_files:
+        try:
+            dicoms.append(pydicom.dcmread(file))
+        except InvalidDicomError:
+            LOGGER.warning(f"Invalid DICOM file: {file}")
+
+    if len(dicoms) == 0:
+        raise ValueError("No valid DICOM files found in the directory.")
+    if len({ds.SeriesInstanceUID for ds in dicoms}) != 1:
+        raise ValueError("All DICOM files must belong to the same series.")
+
     dicoms.sort(key=lambda x: x.InstanceNumber)
     if as_sequence:
         return pydicom.Sequence(dicoms)
@@ -181,12 +199,11 @@ def dicomread_volume(
     slices = len(dicoms)
 
     # Initialize a 3D array to store pixel data
-    volume = np.zeros((slices, rows, columns), dtype=np.uint16)
+    volume = np.zeros((rows, columns, slices), dtype=np.uint16)
 
     # Read each DICOM file and store pixel data in the volume array
-    for i, file_path in enumerate(dicom_files):
-        ds = pydicom.dcmread(file_path)
-        volume[i, :, :] = ds.pixel_array
+    for i, ds in enumerate(dicoms):
+        volume[:, :, i] = ds.pixel_array
     return volume
 
 

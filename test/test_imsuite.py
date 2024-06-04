@@ -72,8 +72,9 @@ def test_dicomread():
 
 def test_dicomread_volume():
     # Test the dicomread_volume function
-    directory = get_testdata_file("dicomdirtests/98892003/MR1")
+    directory = get_testdata_file("dicomdirtests/98892003/MR700")
     result = dicomread_volume(directory)
+    print(result.shape)
     assert isinstance(result, np.ndarray), "The result should be a numpy array."
 
 
