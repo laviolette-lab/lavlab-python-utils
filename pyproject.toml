@@ -53,6 +53,9 @@ jupyter = [
   "dash-slicer",
   "dash-bootstrap-components"
 ]
+all = [
+  "lavlab-python-utils[omero, jupyter]"
+]
 
 [project.entry-points."lavlab_python_utils.service_providers"]
 OMERO = "lavlab.omero:OmeroServiceProvider"
