@@ -668,7 +668,7 @@ def imhist(img_arr: np.ndarray, bins=256) -> None:
 
 def imcomplement(img_arr: np.ndarray) -> np.ndarray:
     """Generates the image's complement (inverts the image).
-
+    
     Parameters
     ----------
     img_arr : np.ndarray
@@ -679,7 +679,23 @@ def imcomplement(img_arr: np.ndarray) -> np.ndarray:
     np.ndarray
         Inverted image.
     """
-    return ~img_arr
+    # Handle uint8 directly
+    if img_arr.dtype == np.uint8:
+        return ~img_arr
+
+    min_val = np.min(img_arr)
+    max_val = np.max(img_arr)
+    
+    # Handle range [0, 1]
+    if max_val <= 1 and min_val >= 0:
+        return 1 - img_arr
+
+    # Handle range [-1, 1]
+    if max_val <= 1 and min_val >= -1:
+        return -img_arr
+
+    # Generalized case
+    return min_val + max_val - img_arr
 
 
 def edge(img_arr: np.ndarray, method: str = "SOBEL", **kwargs) -> np.ndarray:
