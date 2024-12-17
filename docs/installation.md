@@ -2,11 +2,20 @@
 
 ## Using latest wheel
 
-You can install the latest release from GitHub:
+You can install the latest release from GitHub, once installed you can get the optional dependencies:
 
 ```sh
 python3 -m pip install https://github.com/laviolette-lab/lavlab-python-utils/releases/latest/download/lavlab_python_utils-latest-py3-none-any.whl
+# optional install targets, must install wheel from github using command above first!
+python3 -m pip install 'lavlab-python-utils[all]'
 ```
+We support the following install targets:
+* omero
+  * installs omero-py for omero api access
+* jupyter
+  * installs dash for performant image viewing
+* all
+  * installs all optional dependencies
 
 ## Using versioned wheel
 
