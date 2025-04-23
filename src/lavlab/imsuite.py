@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import bisect
 
-# import logging
 import io
 import os
 from enum import Enum
