@@ -80,10 +80,10 @@ def get_shapes_as_points(  # pylint: disable=R0914
 
             if isinstance(shape, EllipseI):
                 points = draw.ellipse_perimeter(
-                    float(shape.getY().getValue() / img_downsample),
-                    float(shape.getX().getValue() / img_downsample),
-                    float(shape.getRadiusY().getValue() / img_downsample),
-                    float(shape.getRadiusX().getValue() / img_downsample),
+                    int(shape.getY().getValue() // img_downsample),
+                    int(shape.getX().getValue() // img_downsample),
+                    int(shape.getRadiusY().getValue() // img_downsample),
+                    int(shape.getRadiusX().getValue() // img_downsample),
                     shape=yx_shape,
                 )
                 points = [(points[1][i], points[0][i]) for i in range(len(points[0]))]
@@ -108,11 +108,14 @@ def get_shapes_as_points(  # pylint: disable=R0914
 
                 r, g, b, _ = uint_to_rgba(color_val)
 
+                if (len(points) / point_downsample) <= 2:
+                    point_downsample = 1
+                    print('Point downsampling too high, leading to destroyed polygon. Setting downsampling = 1.')
+
                 points = [
                     (float(x), float(y))
-                    for x, y in zip(
-                        points[0][::point_downsample], points[1][::point_downsample]
-                    )
+                    for x, y in 
+                        points[::point_downsample]
                 ]
 
                 # Ensure shape ID is an integer
