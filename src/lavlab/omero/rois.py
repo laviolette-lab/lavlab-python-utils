@@ -37,9 +37,50 @@ def get_rois(img: ImageWrapper, roi_service=None) -> RoiWrapper:
     return rois
 
 
-def get_shapes_as_points(  # pylint: disable=R0914
+def _get_rectangle_points(shape: RectangleI, img_downsample: int, yx_shape: tuple[int, int]):
+    x = np.round(shape.getX().getValue() / img_downsample)
+    y = np.round(shape.getY().getValue() / img_downsample)
+    w = np.round(shape.getWidth().getValue() / img_downsample)
+    h = np.round(shape.getHeight().getValue() / img_downsample)
+    points_data = draw.rectangle_perimeter(
+        (y, x), (y + h, x + w), shape=yx_shape
+    )
+    points = [(points_data[1][i], points_data[0][i]) for i in range(len(points_data[0]))]
+    return np.array(points, dtype=np.int32)
+
+
+def _get_ellipse_points(shape: EllipseI, img_downsample: int, yx_shape: tuple[int, int]):
+    points_data = draw.ellipse_perimeter(
+        np.round(shape.getY().getValue() / img_downsample),
+        np.round(shape.getX().getValue() / img_downsample),
+        np.round(shape.getRadiusY().getValue() / img_downsample),
+        np.round(shape.getRadiusX().getValue() / img_downsample),
+        shape=yx_shape,
+    )
+    points = [(points_data[1][i], points_data[0][i]) for i in range(len(points_data[0]))]
+    return np.array(points, dtype=np.int32)
+
+
+def _get_polygon_points(shape: PolygonI, img_downsample: int, point_downsample: int):
+    point_string_array = shape.getPoints().getValue().split(" ")
+    yx: list[tuple[float, float]] = []
+    for point_pair_str in point_string_array:
+        coords = point_pair_str.split(",")
+        if len(coords) == 2: # Ensure valid coordinate pair
+            yx.append(
+                (
+                    np.round(float(coords[1]) / img_downsample),
+                    np.round(float(coords[0]) / img_downsample),
+                )
+            )
+    if yx:
+        return np.array(yx[::point_downsample], dtype=np.int32)
+    return None
+
+
+def get_shapes_as_points(
     img: ImageWrapper, point_downsample=4, img_downsample=1, roi_service=None
-) -> list[tuple[int, tuple[int, int, int], list[tuple[float, float]]]]:
+) -> list[tuple[int, tuple[int, int, int], np.ndarray[np.int32]]]:
     """
     Gathers Rectangles, Polygons, and Ellipses as a tuple containing the
     shapeId, its rgb val, and a tuple of xy points of its bounds.
@@ -60,70 +101,26 @@ def get_shapes_as_points(  # pylint: disable=R0914
     returns: list[ shape.id, (r,g,b), list[tuple(x,y)] ]
         list of tuples containing a shape's id, rgb value, and a tuple of row and column points
     """
-    yx_shape = (img.getSizeY() / img_downsample, img.getSizeX() / img_downsample)
+    yx_shape = (img.getSizeY() // img_downsample, img.getSizeX() // img_downsample)
+    processed_shapes = []
 
-    shapes = []
     for roi in get_rois(img, roi_service):
-        points = None
         for shape in roi.copyShapes():
-
+            points = None
             if isinstance(shape, RectangleI):
-                x = float(shape.getX().getValue()) / img_downsample
-                y = float(shape.getY().getValue()) / img_downsample
-                w = float(shape.getWidth().getValue()) / img_downsample
-                h = float(shape.getHeight().getValue()) / img_downsample
-                # points = [(x, y),(x+w, y), (x+w, y+h), (x, y+h), (x, y)]
-                points = draw.rectangle_perimeter(
-                    (y, x), (y + h, x + w), shape=yx_shape
-                )
-                points = [(points[1][i], points[0][i]) for i in range(len(points[0]))]
-
-            if isinstance(shape, EllipseI):
-                points = draw.ellipse_perimeter(
-                    int(shape.getY().getValue() // img_downsample),
-                    int(shape.getX().getValue() // img_downsample),
-                    int(shape.getRadiusY().getValue() // img_downsample),
-                    int(shape.getRadiusX().getValue() // img_downsample),
-                    shape=yx_shape,
-                )
-                points = [(points[1][i], points[0][i]) for i in range(len(points[0]))]
-
-            if isinstance(shape, PolygonI):
-                point_string_array = shape.getPoints().getValue().split(" ")
-
-                xy: list[tuple[float, float]] = []
-                for i, points in enumerate(point_string_array):
-                    coords = points.split(",")
-                    xy.append(
-                        (
-                            float(coords[0]) / img_downsample,
-                            float(coords[1]) / img_downsample,
-                        )
-                    )
-                if xy:
-                    points = xy
+                points = _get_rectangle_points(shape, img_downsample, yx_shape)
+            elif isinstance(shape, EllipseI):
+                points = _get_ellipse_points(shape, img_downsample, yx_shape)
+            elif isinstance(shape, PolygonI):
+                points = _get_polygon_points(shape, img_downsample, point_downsample)
 
             if points is not None:
+                shape_id = shape.getId().getValue()
                 color_val = shape.getStrokeColor().getValue()
-
                 r, g, b, _ = uint_to_rgba(color_val)
+                processed_shapes.append((shape_id, (r, g, b), points))
 
-                if (len(points) / point_downsample) <= 2:
-                    point_downsample = 1
-                    print('Point downsampling too high, leading to destroyed polygon. Setting downsampling = 1.')
-
-                points = [
-                    (float(x), float(y))
-                    for x, y in 
-                        points[::point_downsample]
-                ]
-
-                # Ensure shape ID is an integer
-                shape_id = int(shape.getId().getValue())
-                shapes.append((shape_id, (r, g, b), points))
-
-    # Sorting by the first element of the tuple which is the ID
-    return sorted(shapes, key=lambda x: x[0])
+    return sorted(processed_shapes, key=lambda x: x[0])
 
 
 def create_roi(img: ImageWrapper, shapes: list[ShapeWrapper]):
