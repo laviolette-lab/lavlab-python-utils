@@ -18,6 +18,8 @@ LavLab Python Utils is designed to streamline common tasks in our research workf
 - **Data Processing:** Functions to handle various data formats used in our research, including DICOM, NIfTI, and more.
 - **Visualization:** Tools to create publication-quality plots and visualizations.
 - **Integration:** Seamless integration with other tools and services used in our lab.
+- **OMERO Support:** Connect to and work with OMERO servers for image data management.
+- **XNAT Support:** Connect to and work with XNAT servers for neuroimaging data management.
 
 ## Installation
 
@@ -27,6 +29,11 @@ You can install LavLab Python Utils via pip:
 python3 -m pip install https://github.com/laviolette-lab/lavlab-python-utils/releases/latest/download/lavlab_python_utils-latest-py3-none-any.whl
 # optional install targets, must install wheel from github using command above first!
 python3 -m pip install 'lavlab-python-utils[all]'
+
+# Or install specific features:
+python3 -m pip install 'lavlab-python-utils[omero]'  # For OMERO support
+python3 -m pip install 'lavlab-python-utils[xnat]'   # For XNAT support
+python3 -m pip install 'lavlab-python-utils[jupyter]' # For Jupyter tools
 ```
 
 ## Documentation
