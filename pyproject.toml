@@ -168,6 +168,7 @@ exclude_lines = [
 [tool.mypy.overrides]
 module = [
     "omero",
+    "xnat",
     "scipy"
 ]
 ignore_missing_imports = true
