@@ -48,18 +48,22 @@ omero = [
   "zeroc-ice @ https://github.com/glencoesoftware/zeroc-ice-py-linux-x86_64/releases/download/20240202/zeroc_ice-3.6.5-cp312-cp312-manylinux_2_28_x86_64.whl#sha256=96fb9066912c52f2503e9f9207f98d51de79c475d19ebd3157aae7bc522b5826 ; python_version == '3.12' and platform_system == 'Linux'",
   "omero-py"
 ]
+xnat = [
+  "xnat"
+]
 jupyter = [
   "jupyter",
   "dash-slicer",
   "dash-bootstrap-components"
 ]
 all = [
-  "lavlab-python-utils[omero, jupyter]"
+  "lavlab-python-utils[omero, xnat, jupyter]"
 ]
 
 [project.entry-points."lavlab_python_utils.service_providers"]
 OMERO = "lavlab.omero:OmeroServiceProvider"
 IDR = "lavlab.omero:IDRServiceProvider"
+XNAT = "lavlab.xnat:XNATServiceProvider"
 
 [project.urls]
 Documentation = "https://github.com/LavLabInfrastructure/lavlab-python-utils#readme"
@@ -90,7 +94,7 @@ dependencies = []
 build = "hatch build && chmod -R 777 dist/*"
 
 [tool.hatch.envs.test]
-features = [ "omero", "jupyter" ]
+features = [ "omero", "xnat", "jupyter" ]
 dependencies = [
   "toml",
   "pytest",
@@ -104,7 +108,7 @@ test = "pytest {args:test}"
 cov = "pytest --cov=src --cov-report=xml {args:test}"
 
 [tool.hatch.envs.lint]
-features = [ "omero", "jupyter" ]
+features = [ "omero", "xnat", "jupyter" ]
 dependencies = [
   "toml",
   "pytest",
@@ -117,7 +121,7 @@ format = "black src test"
 check = "black src test --check"
 
 [tool.hatch.envs.types]
-features = [ "omero", "jupyter" ]
+features = [ "omero", "xnat", "jupyter" ]
 dependencies = [
   "mypy>=1.0.0",
 ]
@@ -125,7 +129,7 @@ dependencies = [
 check = "mypy --install-types --non-interactive {args:src/lavlab test}"
 
 [tool.hatch.envs.docs]
-features = [ "omero", "jupyter" ]
+features = [ "omero", "xnat", "jupyter" ]
 dependencies = [
   "mkdocs",
   "mkdocstrings-python",
