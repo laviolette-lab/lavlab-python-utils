@@ -1176,9 +1176,9 @@ pillow-jpls==1.3.2 \
     --hash=sha256:f346cc2f957c7b726266d46749028832351599a737bb27671eda5853784d02c3 \
     --hash=sha256:f8956774bb9bc23aa85df733b21eaf128c1e115feedf6f37d88c1955d52c444d
     # via highdicom
-platformdirs==4.2.0 \
-    --hash=sha256:0614df2a2f37e1a662acbd8e2b25b92ccf8632929bc6d43467e17fe89c75e068 \
-    --hash=sha256:ef0cc731df711022c174543cb70a9b5bd22e5a9337c8624ef2c2ceb8ddad8768
+platformdirs==4.2.2 \
+    --hash=sha256:2d7a1657e36a80ea911db832a8a6ece5ee53d8de21edd5cc5879af6530b1bfee \
+    --hash=sha256:38b7b51f512eed9e84a22788b4bce1de17c0adb134d6becb09836e37d8654cd3
     # via
     #   black
     #   jupyter-core
