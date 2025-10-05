@@ -1,6 +1,6 @@
 ARG PY_VERSION=3.11
 
-FROM python:${PY_VERSION:- 3.11} as base
+FROM python:${PY_VERSION:-3.11} as base
 RUN apt-get update && apt-get install -y libvips
 # create non-root user (primarily for devcontainer)
 RUN groupadd --gid 1000 vscode \
